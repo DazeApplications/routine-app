@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Routines</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#5B4BDA">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Routines">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F4F2FB;
+    --paper-deep: #E9E4F8;
+    --ink: #241F3A;
+    --ink-soft: #6E6690;
+    --violet: #6C5CE7;
+    --violet-deep: #5340D9;
+    --teal: #2EC4B6;
+    --teal-deep: #1FA79A;
+    --warm: #FF9F45;
+    --line: #E1DCF3;
+    --card: #FFFFFF;
+    --danger: #E0517A;
+    --shadow: 0 1px 0 rgba(36,31,58,0.04), 0 6px 18px rgba(36,31,58,0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1, h2, h3 { font-family: 'Fraunces', serif; margin: 0; }
+
+  button { font-family: inherit; }
+
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Header */
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px 10px;
+  }
+  .app-header h1 { font-size: 22px; font-weight: 700; color: var(--violet-deep); }
+  .icon-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .icon-btn:hover { border-color: var(--violet); }
+
+  /* Main content */
+  .view { flex: 1; padding: 4px 18px 100px; max-width: 640px; width: 100%; margin: 0 auto; }
+  .hidden { display: none !important; }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 18px 0 10px;
+  }
+
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--ink-soft);
+  }
+  .empty-state .big { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { margin: 6px 0 18px; font-size: 14px; }
+
+  /* Cards */
+  .card-list { display: flex; flex-direction: column; gap: 10px; }
+  .routine-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px 14px;
+    box-shadow: var(--shadow);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .routine-card .emoji { font-size: 28px; width: 42px; text-align: center; flex-shrink: 0; }
+  .routine-card .info { flex: 1; min-width: 0; }
+  .routine-card .info h3 { font-size: 16px; font-weight: 600; color: var(--ink); }
+  .routine-card .info .meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .routine-card .actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .routine-card.due { border-color: var(--warm); }
+  .due-badge {
+    display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: #fff; background: var(--warm); border-radius: 999px; padding: 2px 7px; margin-left: 6px; vertical-align: middle;
+  }
+  .routine-card .play-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 12px;
+    background: var(--violet); color: #fff; border: none; cursor: pointer; font-size: 16px;
+  }
+  .routine-card .play-btn:hover { background: var(--violet-deep); }
+  .ghost-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 10px;
+    background: none; border: 1px solid var(--line); cursor: pointer; font-size: 14px; color: var(--ink-soft);
+  }
+  .ghost-btn:hover { border-color: var(--violet); color: var(--violet); }
+  .ghost-btn.listening {
+    border-color: var(--warm); color: var(--warm);
+    animation: mic-pulse 1s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,159,69,0.35); }
+    50% { box-shadow: 0 0 0 6px rgba(255,159,69,0); }
+  }
+
+  .action-row {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  .action-row .emoji { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
+  .action-row .info { flex: 1; min-width: 0; }
+  .action-row .info h4 { margin: 0; font-size: 14.5px; font-weight: 600; }
+  .action-row .info .meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+  .action-row .actions { display: flex; gap: 6px; }
+
+  /* FAB */
+  .fab {
+    position: fixed; right: 20px; bottom: 24px;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--violet); color: #fff; border: none;
+    font-size: 26px; line-height: 1; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(91,75,218,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 20;
+  }
+  .fab:hover { background: var(--violet-deep); }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: flex; background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    z-index: 15;
+  }
+  .bottom-nav button {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border: none; background: none; padding: 8px 4px; cursor: pointer;
+    color: var(--ink-soft); font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.03em; text-transform: uppercase; border-radius: 10px;
+  }
+  .bottom-nav button .nav-icon { font-size: 19px; }
+  .bottom-nav button.active { color: var(--violet-deep); }
+  .bottom-nav button.active .nav-icon { transform: scale(1.08); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(36,31,58,0.45);
+    display: flex; align-items: flex-end; justify-content: center;
+    z-index: 50;
+  }
+  @media (min-width: 640px) {
+    .modal-backdrop { align-items: center; }
+  }
+  .modal {
+    background: var(--paper); width: 100%; max-width: 480px;
+    border-radius: 20px 20px 0 0;
+    max-height: 88vh; overflow-y: auto;
+    padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 640px) {
+    .modal { border-radius: 20px; max-height: 80vh; }
+  }
+  .modal h2 { font-size: 19px; margin-bottom: 16px; }
+  .modal-close-row { display: flex; justify-content: flex-end; margin-bottom: -6px; }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .field input[type=text], .field input[type=number], .field input[type=time], .field select {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 15px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--violet); }
+  .duration-row { display: flex; gap: 10px; }
+  .duration-row .field { flex: 1; }
+
+  .day-toggle { display: flex; gap: 6px; }
+  .day-toggle button {
+    flex: 1; padding: 8px 0; border-radius: 8px; border: 1px solid var(--line);
+    background: var(--card); font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  .day-toggle button.selected { border-color: var(--violet); color: var(--violet-deep); background: var(--paper-deep); }
+
+  .emoji-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+  .emoji-picker button {
+    width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); font-size: 19px; cursor: pointer;
+  }
+  .emoji-picker button.selected { border-color: var(--violet); background: var(--paper-deep); }
+
+  .type-toggle { display: flex; gap: 8px; }
+  .type-toggle button {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); cursor: pointer; font-size: 13px; color: var(--ink-soft); font-weight: 600;
+  }
+  .type-toggle button.selected { border-color: var(--violet); color: var(--violet-deep); background: var(--paper-deep); }
+
+  .btn-primary {
+    width: 100%; padding: 13px; border: none; border-radius: 12px;
+    background: var(--violet); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    margin-top: 6px;
+  }
+  .btn-primary:hover { background: var(--violet-deep); }
+  .btn-secondary {
+    width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer;
+    margin-top: 8px;
+  }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+
+  /* Routine step picker */
+  .step-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .step-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px;
+  }
+  .step-item .num {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-soft); width: 18px;
+  }
+  .step-item .emoji { font-size: 18px; }
+  .step-item .name { flex: 1; font-size: 14px; font-weight: 500; }
+  .step-item .meta { font-size: 11px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; }
+  .step-item .step-actions { display: flex; gap: 3px; }
+  .step-item .step-actions button {
+    width: 26px; height: 26px; border: none; background: none; color: var(--ink-soft); cursor: pointer; font-size: 13px;
+  }
+  .step-item .step-actions button:hover { color: var(--violet); }
+
+  .picker-list { display: flex; flex-direction: column; gap: 6px; max-height: 240px; overflow-y: auto; margin-bottom: 10px; }
+  .picker-row {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; width: 100%;
+    border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer;
+    font-family: inherit; text-align: left; color: inherit;
+  }
+  .picker-row:hover { border-color: var(--violet); }
+  .picker-row .emoji { font-size: 17px; }
+  .picker-row .name { flex: 1; font-size: 13.5px; }
+  .picker-row .meta { font-size: 11px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; }
+
+  /* Run view */
+  .run-overlay {
+    position: fixed; inset: 0; background: var(--violet-deep);
+    z-index: 100; display: flex; flex-direction: column; color: #fff;
+  }
+  .run-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: calc(16px + env(safe-area-inset-top)) 18px 8px;
+  }
+  .run-top button {
+    background: rgba(255,255,255,0.15); border: none; color: #fff;
+    width: 36px; height: 36px; border-radius: 10px; font-size: 15px; cursor: pointer;
+  }
+  .run-progress-dots { display: flex; gap: 5px; justify-content: center; padding: 4px 18px 0; flex-wrap: wrap; }
+  .run-progress-dots span {
+    width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.3);
+  }
+  .run-progress-dots span.done { background: var(--teal); }
+  .run-progress-dots span.current { background: #fff; width: 9px; height: 9px; }
+
+  .run-body {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px 24px; text-align: center;
+  }
+  .run-emoji { font-size: 64px; margin-bottom: 14px; }
+  .run-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 600; margin-bottom: 22px; max-width: 340px; }
+  .run-timer {
+    font-family: 'IBM Plex Mono', monospace; font-size: 56px; font-weight: 600;
+    margin-bottom: 18px; font-variant-numeric: tabular-nums;
+  }
+  .run-timer-ring { position: relative; width: 200px; height: 200px; margin-bottom: 8px; }
+  .run-timer-ring svg { transform: rotate(-90deg); }
+  .run-timer-ring .ring-bg { fill: none; stroke: rgba(255,255,255,0.18); stroke-width: 8; }
+  .run-timer-ring .ring-fg { fill: none; stroke: var(--teal); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.25s linear; }
+  .run-timer-ring .ring-label {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace; font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .run-timer-controls { display: flex; gap: 12px; margin-top: 6px; }
+  .run-timer-controls button {
+    padding: 10px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.1); color: #fff; font-size: 13px; cursor: pointer; font-weight: 600;
+  }
+  .run-timer-controls button.primary { background: var(--teal); border-color: var(--teal); color: #17332f; }
+
+  .run-bottom { padding: 16px 24px calc(24px + env(safe-area-inset-bottom)); display: flex; gap: 10px; }
+  .run-bottom button {
+    flex: 1; padding: 15px; border-radius: 14px; border: none; cursor: pointer; font-size: 15px; font-weight: 600;
+  }
+  .run-bottom .btn-back { background: rgba(255,255,255,0.14); color: #fff; flex: 0 0 52px; }
+  .run-bottom .btn-next { background: #fff; color: var(--violet-deep); flex: 1; }
+
+  .run-complete { display: flex; flex-direction: column; align-items: center; }
+  .run-complete .big { font-size: 60px; margin-bottom: 10px; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="app-header">
+    <h1>Routines</h1>
+    <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+  </header>
+
+  <main>
+    <section id="view-home" class="view">
+      <div id="homeContent"></div>
+    </section>
+
+    <section id="view-actions" class="view hidden">
+      <div class="section-label">Your custom actions</div>
+      <div id="actionsContent"></div>
+    </section>
+  </main>
+
+  <button class="fab" id="fabBtn" title="Add">+</button>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-btn" data-view="actions"><span class="nav-icon">🧩</span>Actions</button>
+  </nav>
+</div>
+
+<!-- Routine editor modal -->
+<div class="modal-backdrop hidden" id="routineModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="routineModal">✕</button></div>
+    <h2 id="routineModalTitle">New routine</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="routineName" placeholder="e.g. Morning skincare">
+    </div>
+    <div class="field">
+      <label>Icon</label>
+      <div class="emoji-picker" id="routineEmojiPicker"></div>
+    </div>
+    <div class="section-label" style="margin-top:20px;">Steps</div>
+    <div class="step-list" id="routineStepList"></div>
+    <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
+
+    <div class="section-label" style="margin-top:20px;">Trigger</div>
+    <div class="field">
+      <label style="display:flex;align-items:center;justify-content:space-between;text-transform:none;font-size:14px;color:var(--ink);">
+        Scheduled time
+        <input type="checkbox" id="scheduleEnabled" style="width:auto;">
+      </label>
+    </div>
+    <div class="field hidden" id="scheduleFields">
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Time</label>
+        <input type="time" id="scheduleTime" value="07:00">
+      </div>
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Days</label>
+        <div class="day-toggle" id="scheduleDays"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="saveRoutineBtn">Save routine</button>
+    <button class="btn-secondary btn-danger hidden" id="deleteRoutineBtn">Delete routine</button>
+  </div>
+</div>
+
+<!-- Step picker modal -->
+<div class="modal-backdrop hidden" id="stepPickerModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="stepPickerModal">✕</button></div>
+    <h2>Add a step</h2>
+    <div class="section-label" style="margin-top:0;">Choose an existing action</div>
+    <div class="picker-list" id="stepPickerList"></div>
+    <div id="stepPickerEmpty" class="empty-state hidden" style="padding:20px;">
+      <p>No custom actions yet — create one below.</p>
+    </div>
+    <button class="btn-secondary" id="createNewActionBtn">+ Create a new action</button>
+  </div>
+</div>
+
+<!-- Action editor modal -->
+<div class="modal-backdrop hidden" id="actionModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="actionModal">✕</button></div>
+    <h2 id="actionModalTitle">New action</h2>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="actionName" placeholder="e.g. Wash face with oil cleanser">
+    </div>
+    <div class="field">
+      <label>Icon</label>
+      <div class="emoji-picker" id="actionEmojiPicker"></div>
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <div class="type-toggle">
+        <button type="button" data-kind="check" id="kindCheckBtn">✓ Mark done</button>
+        <button type="button" data-kind="timer" id="kindTimerBtn">⏱ Timer</button>
+      </div>
+    </div>
+    <div class="field hidden" id="durationField">
+      <label>Duration</label>
+      <div class="duration-row">
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Minutes</label>
+          <input type="number" id="durationMin" min="0" max="180" value="2">
+        </div>
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Seconds</label>
+          <input type="number" id="durationSec" min="0" max="59" value="0">
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="saveActionBtn">Save action</button>
+    <button class="btn-secondary btn-danger hidden" id="deleteActionBtn">Delete action</button>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop hidden" id="settingsModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="settingsModal">✕</button></div>
+    <h2>Settings</h2>
+    <div class="field">
+      <label style="display:flex;align-items:center;justify-content:space-between;text-transform:none;font-size:14px;color:var(--ink);">
+        Sound when a timer finishes
+        <input type="checkbox" id="soundToggle" style="width:auto;">
+      </label>
+    </div>
+    <button class="btn-secondary btn-danger" id="resetDataBtn">Erase all routines &amp; actions</button>
+  </div>
+</div>
+
+<!-- Run overlay -->
+<div class="run-overlay hidden" id="runOverlay">
+  <div class="run-top">
+    <button id="runCloseBtn">✕</button>
+    <div id="runTitle" style="font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;opacity:0.8;"></div>
+    <div style="width:36px;"></div>
+  </div>
+  <div class="run-progress-dots" id="runDots"></div>
+  <div class="run-body" id="runBody"></div>
+  <div class="run-bottom" id="runBottom"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var STORE_KEY = "routineapp.v1";
+  var EMOJI_CHOICES = ["🧴","🚿","🧼","💧","🪥","🧖","🧘","🏃","🍋","☕","📖","💊","🧹","🛏️","🌿","🧦","🧠","🎯","⏰","✨","😴","🥤","🪞","🧊"];
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var VOICE_CONFIRM_WORDS = ["start", "go", "begin", "yes", "play"];
+
+  var state = load();
+  var currentView = "home";
+  var editingRoutineDraft = null;
+  var editingActionId = null;
+  var actionModalContext = null;
+  var runState = null;
+  var runTicker = null;
+  var audioCtx = null;
+
+  function load() {
+    var raw;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (e) { raw = null; }
+    var data = raw ? JSON.parse(raw) : {};
+    return {
+      actions: data.actions || [],
+      routines: data.routines || [],
+      settings: Object.assign({ sound: true }, data.settings || {})
+    };
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  function fmtDuration(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" + s : s);
+  }
+
+  var DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+  var DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function fmtTime12(time) {
+    var parts = (time || "00:00").split(":");
+    var h = parseInt(parts[0], 10) || 0;
+    var m = parts[1] || "00";
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + m + " " + ampm;
+  }
+
+  function fmtScheduleDays(days) {
+    if (days.length === 7) return "Every day";
+    return days.slice().sort().map(function (d) { return DAY_NAMES[d]; }).join(" ");
+  }
+
+  function isRoutineDue(r) {
+    var sch = r.schedule;
+    if (!sch || !sch.enabled || !sch.days.length) return false;
+    var now = new Date();
+    if (sch.days.indexOf(now.getDay()) === -1) return false;
+    var parts = (sch.time || "00:00").split(":");
+    var schedMinutes = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+    var nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return nowMinutes >= schedMinutes;
+  }
+
+  function findAction(id) {
+    for (var i = 0; i < state.actions.length; i++) if (state.actions[i].id === id) return state.actions[i];
+    return null;
+  }
+
+  function findRoutine(id) {
+    for (var i = 0; i < state.routines.length; i++) if (state.routines[i].id === id) return state.routines[i];
+    return null;
+  }
+
+  // ---------- Navigation ----------
+  function setView(v) {
+    currentView = v;
+    document.getElementById("view-home").classList.toggle("hidden", v !== "home");
+    document.getElementById("view-actions").classList.toggle("hidden", v !== "actions");
+    var navBtns = document.querySelectorAll(".nav-btn");
+    for (var i = 0; i < navBtns.length; i++) {
+      navBtns[i].classList.toggle("active", navBtns[i].getAttribute("data-view") === v);
+    }
+    renderCurrentView();
+  }
+
+  function renderCurrentView() {
+    if (currentView === "home") renderHome(); else renderActions();
+  }
+
+  // ---------- Home / routines list ----------
+  function renderHome() {
+    var el = document.getElementById("homeContent");
+    if (!state.routines.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">🗓️</div>' +
+        '<h3>No routines yet</h3>' +
+        '<p>Build a routine out of custom actions — like a skincare routine, a morning warm-up, or a wind-down ritual.</p>' +
+        '</div>';
+      return;
+    }
+    var html = '<div class="card-list">';
+    state.routines.forEach(function (r) {
+      var totalSec = 0, timedSteps = 0;
+      r.steps.forEach(function (s) {
+        var a = findAction(s.actionId);
+        if (a && a.kind === "timer") { totalSec += a.duration; timedSteps++; }
+      });
+      var meta = r.steps.length + (r.steps.length === 1 ? " step" : " steps");
+      if (timedSteps) meta += " · ~" + Math.ceil(totalSec / 60) + " min";
+      var due = false;
+      if (r.schedule && r.schedule.enabled) {
+        meta += " · ⏰ " + fmtTime12(r.schedule.time) + " " + fmtScheduleDays(r.schedule.days);
+        due = isRoutineDue(r);
+      }
+      html +=
+        '<div class="routine-card' + (due ? ' due' : '') + '">' +
+          '<div class="emoji">' + r.icon + '</div>' +
+          '<div class="info"><h3>' + escapeHtml(r.name) + (due ? ' <span class="due-badge">Due now</span>' : '') + '</h3><div class="meta">' + meta + '</div></div>' +
+          '<div class="actions">' +
+            '<button class="ghost-btn" data-edit-routine="' + r.id + '">✎</button>' +
+            (SpeechRec ? '<button class="ghost-btn" data-voice-routine="' + r.id + '" title="Tap and say &quot;start&quot;">🎤</button>' : '') +
+            '<button class="play-btn" data-play-routine="' + r.id + '">▶</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-play-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startRun(btn.getAttribute("data-play-routine")); });
+    });
+    el.querySelectorAll("[data-voice-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startVoiceTrigger(btn.getAttribute("data-voice-routine"), btn); });
+    });
+    el.querySelectorAll("[data-edit-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { openRoutineModal(btn.getAttribute("data-edit-routine")); });
+    });
+  }
+
+  // ---------- Actions library ----------
+  function renderActions() {
+    var el = document.getElementById("actionsContent");
+    if (!state.actions.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">🧩</div>' +
+        '<h3>No actions yet</h3>' +
+        '<p>Actions are the building blocks of a routine — things like "Splash face with water" or "Clean for 2 minutes". Add one to get started.</p>' +
+        '</div>';
+      return;
+    }
+    var html = '<div class="card-list">';
+    state.actions.forEach(function (a) {
+      html +=
+        '<div class="action-row">' +
+          '<div class="emoji">' + a.icon + '</div>' +
+          '<div class="info"><h4>' + escapeHtml(a.name) + '</h4>' +
+            '<div class="meta">' + (a.kind === "timer" ? "⏱ " + fmtDuration(a.duration) + " timer" : "✓ Mark done") + '</div></div>' +
+          '<div class="actions"><button class="ghost-btn" data-edit-action="' + a.id + '">✎</button></div>' +
+        '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    el.querySelectorAll("[data-edit-action]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        actionModalContext = "library";
+        openActionModal(btn.getAttribute("data-edit-action"));
+      });
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  // ---------- Modal helpers ----------
+  function openModal(id) { document.getElementById(id).classList.remove("hidden"); }
+  function closeModal(id) { document.getElementById(id).classList.add("hidden"); }
+
+  document.querySelectorAll("[data-close]").forEach(function (btn) {
+    btn.addEventListener("click", function () { closeModal(btn.getAttribute("data-close")); });
+  });
+  document.querySelectorAll(".modal-backdrop").forEach(function (bd) {
+    bd.addEventListener("click", function (e) { if (e.target === bd) bd.classList.add("hidden"); });
+  });
+
+  function buildEmojiPicker(containerId, selected, onPick) {
+    var el = document.getElementById(containerId);
+    el.innerHTML = "";
+    EMOJI_CHOICES.forEach(function (em) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = em;
+      if (em === selected) b.classList.add("selected");
+      b.addEventListener("click", function () {
+        el.querySelectorAll("button").forEach(function (x) { x.classList.remove("selected"); });
+        b.classList.add("selected");
+        onPick(em);
+      });
+      el.appendChild(b);
+    });
+  }
+
+  // ---------- Action modal ----------
+  var actionPickedEmoji = "🧴";
+  var actionPickedKind = "check";
+
+  function openActionModal(id) {
+    editingActionId = id || null;
+    var a = id ? findAction(id) : null;
+    document.getElementById("actionModalTitle").textContent = a ? "Edit action" : "New action";
+    document.getElementById("actionName").value = a ? a.name : "";
+    actionPickedEmoji = a ? a.icon : "🧴";
+    actionPickedKind = a ? a.kind : "check";
+    buildEmojiPicker("actionEmojiPicker", actionPickedEmoji, function (em) { actionPickedEmoji = em; });
+    setKind(actionPickedKind);
+    var mins = a && a.kind === "timer" ? Math.floor(a.duration / 60) : 2;
+    var secs = a && a.kind === "timer" ? a.duration % 60 : 0;
+    document.getElementById("durationMin").value = mins;
+    document.getElementById("durationSec").value = secs;
+    document.getElementById("deleteActionBtn").classList.toggle("hidden", !a);
+    openModal("actionModal");
+  }
+
+  function setKind(kind) {
+    actionPickedKind = kind;
+    document.getElementById("kindCheckBtn").classList.toggle("selected", kind === "check");
+    document.getElementById("kindTimerBtn").classList.toggle("selected", kind === "timer");
+    document.getElementById("durationField").classList.toggle("hidden", kind !== "timer");
+  }
+  document.getElementById("kindCheckBtn").addEventListener("click", function () { setKind("check"); });
+  document.getElementById("kindTimerBtn").addEventListener("click", function () { setKind("timer"); });
+
+  document.getElementById("saveActionBtn").addEventListener("click", function () {
+    var name = document.getElementById("actionName").value.trim();
+    if (!name) { document.getElementById("actionName").focus(); return; }
+    var duration = 0;
+    if (actionPickedKind === "timer") {
+      var m = parseInt(document.getElementById("durationMin").value, 10) || 0;
+      var s = parseInt(document.getElementById("durationSec").value, 10) || 0;
+      duration = Math.max(1, m * 60 + s);
+    }
+    var savedId;
+    if (editingActionId) {
+      var a = findAction(editingActionId);
+      a.name = name; a.icon = actionPickedEmoji; a.kind = actionPickedKind; a.duration = duration;
+      savedId = a.id;
+    } else {
+      var newAction = { id: uid(), name: name, icon: actionPickedEmoji, kind: actionPickedKind, duration: duration };
+      state.actions.push(newAction);
+      savedId = newAction.id;
+    }
+    save();
+    closeModal("actionModal");
+    if (actionModalContext === "step") {
+      addStepToDraft(savedId);
+      renderRoutineStepList();
+      openModal("routineModal");
+    } else if (actionModalContext === "step-edit") {
+      renderRoutineStepList();
+      openModal("routineModal");
+    } else {
+      renderActions();
+    }
+  });
+
+  document.getElementById("deleteActionBtn").addEventListener("click", function () {
+    if (!editingActionId) return;
+    if (!confirm("Delete this action? It will also be removed from any routines that use it.")) return;
+    state.actions = state.actions.filter(function (a) { return a.id !== editingActionId; });
+    state.routines.forEach(function (r) {
+      r.steps = r.steps.filter(function (s) { return s.actionId !== editingActionId; });
+    });
+    save();
+    closeModal("actionModal");
+    if (actionModalContext === "step" || actionModalContext === "step-edit") {
+      editingRoutineDraft.steps = editingRoutineDraft.steps.filter(function (s) { return s.actionId !== editingActionId; });
+      renderRoutineStepList();
+      openModal("routineModal");
+    } else {
+      renderActions();
+    }
+  });
+
+  // ---------- Routine modal ----------
+  var routinePickedEmoji = "🗓️";
+
+  function openRoutineModal(id) {
+    var r = id ? findRoutine(id) : null;
+    editingRoutineDraft = {
+      id: r ? r.id : null,
+      name: r ? r.name : "",
+      icon: r ? r.icon : "🗓️",
+      steps: r ? r.steps.map(function (s) { return { stepId: uid(), actionId: s.actionId }; }) : [],
+      schedule: r && r.schedule ?
+        { enabled: r.schedule.enabled, time: r.schedule.time, days: r.schedule.days.slice() } :
+        { enabled: false, time: "07:00", days: [1, 2, 3, 4, 5] }
+    };
+    document.getElementById("routineModalTitle").textContent = r ? "Edit routine" : "New routine";
+    document.getElementById("routineName").value = editingRoutineDraft.name;
+    routinePickedEmoji = editingRoutineDraft.icon;
+    buildEmojiPicker("routineEmojiPicker", routinePickedEmoji, function (em) { routinePickedEmoji = em; });
+    document.getElementById("deleteRoutineBtn").classList.toggle("hidden", !r);
+    document.getElementById("scheduleEnabled").checked = editingRoutineDraft.schedule.enabled;
+    document.getElementById("scheduleTime").value = editingRoutineDraft.schedule.time;
+    document.getElementById("scheduleFields").classList.toggle("hidden", !editingRoutineDraft.schedule.enabled);
+    buildDayToggle(editingRoutineDraft.schedule.days);
+    renderRoutineStepList();
+    openModal("routineModal");
+  }
+
+  function buildDayToggle(selectedDays) {
+    var el = document.getElementById("scheduleDays");
+    el.innerHTML = "";
+    DAY_LABELS.forEach(function (label, idx) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      if (selectedDays.indexOf(idx) !== -1) b.classList.add("selected");
+      b.addEventListener("click", function () {
+        var days = editingRoutineDraft.schedule.days;
+        var i = days.indexOf(idx);
+        if (i === -1) days.push(idx); else days.splice(i, 1);
+        b.classList.toggle("selected");
+      });
+      el.appendChild(b);
+    });
+  }
+
+  document.getElementById("scheduleEnabled").addEventListener("change", function (e) {
+    editingRoutineDraft.schedule.enabled = e.target.checked;
+    document.getElementById("scheduleFields").classList.toggle("hidden", !e.target.checked);
+  });
+  document.getElementById("scheduleTime").addEventListener("change", function (e) {
+    editingRoutineDraft.schedule.time = e.target.value || "07:00";
+  });
+
+  function renderRoutineStepList() {
+    var el = document.getElementById("routineStepList");
+    if (!editingRoutineDraft.steps.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="margin:0;">No steps yet — add one below.</p></div>';
+      return;
+    }
+    var html = "";
+    editingRoutineDraft.steps.forEach(function (s, idx) {
+      var a = findAction(s.actionId);
+      if (!a) return;
+      html +=
+        '<div class="step-item">' +
+          '<div class="num">' + (idx + 1) + '</div>' +
+          '<div class="emoji">' + a.icon + '</div>' +
+          '<div class="name">' + escapeHtml(a.name) + '</div>' +
+          '<div class="meta">' + (a.kind === "timer" ? fmtDuration(a.duration) : "✓") + '</div>' +
+          '<div class="step-actions">' +
+            '<button data-edit-step="' + idx + '">✎</button>' +
+            (idx > 0 ? '<button data-move="' + idx + ':up">↑</button>' : '<button disabled style="opacity:0.25;">↑</button>') +
+            (idx < editingRoutineDraft.steps.length - 1 ? '<button data-move="' + idx + ':down">↓</button>' : '<button disabled style="opacity:0.25;">↓</button>') +
+            '<button data-remove-step="' + idx + '">✕</button>' +
+          '</div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll("[data-edit-step]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var i = parseInt(btn.getAttribute("data-edit-step"), 10);
+        actionModalContext = "step-edit";
+        closeModal("routineModal");
+        openActionModal(editingRoutineDraft.steps[i].actionId);
+      });
+    });
+    el.querySelectorAll("[data-move]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var parts = btn.getAttribute("data-move").split(":");
+        var i = parseInt(parts[0], 10);
+        var dir = parts[1] === "up" ? -1 : 1;
+        var j = i + dir;
+        var steps = editingRoutineDraft.steps;
+        var tmp = steps[i]; steps[i] = steps[j]; steps[j] = tmp;
+        renderRoutineStepList();
+      });
+    });
+    el.querySelectorAll("[data-remove-step]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var i = parseInt(btn.getAttribute("data-remove-step"), 10);
+        editingRoutineDraft.steps.splice(i, 1);
+        renderRoutineStepList();
+      });
+    });
+  }
+
+  function addStepToDraft(actionId) {
+    editingRoutineDraft.steps.push({ stepId: uid(), actionId: actionId });
+  }
+
+  document.getElementById("addStepBtn").addEventListener("click", function () {
+    renderStepPicker();
+    closeModal("routineModal");
+    openModal("stepPickerModal");
+  });
+
+  function renderStepPicker() {
+    var el = document.getElementById("stepPickerList");
+    var emptyEl = document.getElementById("stepPickerEmpty");
+    if (!state.actions.length) {
+      el.innerHTML = "";
+      emptyEl.classList.remove("hidden");
+      return;
+    }
+    emptyEl.classList.add("hidden");
+    var html = "";
+    state.actions.forEach(function (a) {
+      html +=
+        '<button type="button" class="picker-row" data-pick-action="' + a.id + '">' +
+          '<div class="emoji">' + a.icon + '</div>' +
+          '<div class="name">' + escapeHtml(a.name) + '</div>' +
+          '<div class="meta">' + (a.kind === "timer" ? fmtDuration(a.duration) : "✓") + '</div>' +
+        '</button>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll("[data-pick-action]").forEach(function (row) {
+      row.addEventListener("click", function () {
+        addStepToDraft(row.getAttribute("data-pick-action"));
+        closeModal("stepPickerModal");
+        renderRoutineStepList();
+        openModal("routineModal");
+      });
+    });
+  }
+
+  document.getElementById("createNewActionBtn").addEventListener("click", function () {
+    actionModalContext = "step";
+    closeModal("stepPickerModal");
+    openActionModal(null);
+  });
+
+  document.getElementById("saveRoutineBtn").addEventListener("click", function () {
+    var name = document.getElementById("routineName").value.trim();
+    if (!name) { document.getElementById("routineName").focus(); return; }
+    if (!editingRoutineDraft.steps.length) { alert("Add at least one step first."); return; }
+    if (editingRoutineDraft.schedule.enabled && !editingRoutineDraft.schedule.days.length) {
+      alert("Pick at least one day, or turn off the scheduled time.");
+      return;
+    }
+    var stepsOut = editingRoutineDraft.steps.map(function (s) { return { actionId: s.actionId }; });
+    var scheduleOut = {
+      enabled: editingRoutineDraft.schedule.enabled,
+      time: editingRoutineDraft.schedule.time,
+      days: editingRoutineDraft.schedule.days.slice()
+    };
+    if (editingRoutineDraft.id) {
+      var r = findRoutine(editingRoutineDraft.id);
+      r.name = name; r.icon = routinePickedEmoji; r.steps = stepsOut; r.schedule = scheduleOut;
+    } else {
+      state.routines.push({ id: uid(), name: name, icon: routinePickedEmoji, steps: stepsOut, schedule: scheduleOut });
+    }
+    save();
+    closeModal("routineModal");
+    renderHome();
+  });
+
+  document.getElementById("deleteRoutineBtn").addEventListener("click", function () {
+    if (!editingRoutineDraft.id) return;
+    if (!confirm("Delete this routine?")) return;
+    state.routines = state.routines.filter(function (r) { return r.id !== editingRoutineDraft.id; });
+    save();
+    closeModal("routineModal");
+    renderHome();
+  });
+
+  // ---------- Settings ----------
+  document.getElementById("settingsBtn").addEventListener("click", function () {
+    document.getElementById("soundToggle").checked = !!state.settings.sound;
+    openModal("settingsModal");
+  });
+  document.getElementById("soundToggle").addEventListener("change", function (e) {
+    state.settings.sound = e.target.checked;
+    save();
+  });
+  document.getElementById("resetDataBtn").addEventListener("click", function () {
+    if (!confirm("This will permanently erase all your routines and actions. Continue?")) return;
+    state.actions = []; state.routines = [];
+    save();
+    closeModal("settingsModal");
+    renderCurrentView();
+  });
+
+  // ---------- Nav & FAB ----------
+  document.querySelectorAll(".nav-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () { setView(btn.getAttribute("data-view")); });
+  });
+  document.getElementById("fabBtn").addEventListener("click", function () {
+    if (currentView === "home") openRoutineModal(null);
+    else { actionModalContext = "library"; openActionModal(null); }
+  });
+
+  // ---------- Run mode ----------
+  function beep() {
+    if (!state.settings.sound) return;
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "sine"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.2, audioCtx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(); o.stop(audioCtx.currentTime + 0.4);
+    } catch (e) {}
+  }
+
+  function startRun(routineId) {
+    var r = findRoutine(routineId);
+    if (!r || !r.steps.length) return;
+    runState = { routineId: routineId, index: 0, running: false, remaining: 0, endsAt: null, finished: false };
+    prepStep();
+    document.getElementById("runOverlay").classList.remove("hidden");
+    renderRun();
+  }
+
+  function startVoiceTrigger(routineId, btn) {
+    if (!SpeechRec || btn.classList.contains("listening")) return;
+    var recognition = new SpeechRec();
+    recognition.lang = navigator.language || "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    btn.classList.add("listening");
+    recognition.onresult = function (e) {
+      var transcript = e.results[0][0].transcript.toLowerCase();
+      var matched = VOICE_CONFIRM_WORDS.some(function (w) { return transcript.indexOf(w) !== -1; });
+      if (matched) startRun(routineId);
+    };
+    recognition.onerror = function (e) {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        alert("Microphone access was blocked. Allow microphone access in your browser settings to use voice start.");
+      }
+    };
+    recognition.onend = function () { btn.classList.remove("listening"); };
+    try { recognition.start(); } catch (e) { btn.classList.remove("listening"); }
+  }
+
+  function currentRoutine() { return findRoutine(runState.routineId); }
+  function currentStep() {
+    var r = currentRoutine();
+    var s = r.steps[runState.index];
+    return { step: s, action: findAction(s.actionId) };
+  }
+
+  function prepStep() {
+    var cs = currentStep();
+    if (cs.action && cs.action.kind === "timer") {
+      runState.remaining = cs.action.duration;
+      runState.running = false;
+      runState.endsAt = null;
+    }
+  }
+
+  function renderRun() {
+    var r = currentRoutine();
+    document.getElementById("runTitle").textContent = r.icon + " " + r.name;
+
+    var dotsEl = document.getElementById("runDots");
+    dotsEl.innerHTML = "";
+    r.steps.forEach(function (s, i) {
+      var span = document.createElement("span");
+      if (i < runState.index) span.className = "done";
+      else if (i === runState.index) span.className = "current";
+      dotsEl.appendChild(span);
+    });
+
+    var bodyEl = document.getElementById("runBody");
+    var bottomEl = document.getElementById("runBottom");
+
+    if (runState.finished) {
+      bodyEl.innerHTML =
+        '<div class="run-complete"><div class="big">🎉</div>' +
+        '<h2 class="run-name">Routine complete</h2>' +
+        '<p style="opacity:0.85;">' + escapeHtml(r.name) + ' — nice work.</p></div>';
+      bottomEl.innerHTML = '<button class="btn-next" id="runDoneBtn" style="border-radius:14px;">Done</button>';
+      document.getElementById("runDoneBtn").addEventListener("click", closeRun);
+      return;
+    }
+
+    var cs = currentStep();
+    var a = cs.action;
+    if (!a) { advanceStep(); return; }
+
+    var html = '<div class="run-emoji">' + a.icon + '</div><div class="run-name">' + escapeHtml(a.name) + '</div>';
+
+    if (a.kind === "timer") {
+      var total = a.duration;
+      var remaining = runState.remaining;
+      var pct = total > 0 ? (total - remaining) / total : 0;
+      var radius = 88, circ = 2 * Math.PI * radius;
+      var offset = circ * (1 - pct);
+      html +=
+        '<div class="run-timer-ring">' +
+          '<svg width="200" height="200" viewBox="0 0 200 200">' +
+            '<circle class="ring-bg" cx="100" cy="100" r="' + radius + '"></circle>' +
+            '<circle class="ring-fg" cx="100" cy="100" r="' + radius + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + offset + '"></circle>' +
+          '</svg>' +
+          '<div class="ring-label">' + fmtDuration(remaining) + '</div>' +
+        '</div>' +
+        '<div class="run-timer-controls">' +
+          '<button id="runTimerToggle" class="primary">' + (runState.running ? "Pause" : (remaining < total ? "Resume" : "Start")) + '</button>' +
+          '<button id="runTimerReset">Reset</button>' +
+        '</div>';
+    }
+
+    bodyEl.innerHTML = html;
+
+    if (a.kind === "timer") {
+      document.getElementById("runTimerToggle").addEventListener("click", toggleTimer);
+      document.getElementById("runTimerReset").addEventListener("click", function () {
+        pauseTicker();
+        runState.remaining = a.duration;
+        renderRun();
+      });
+    }
+
+    var backDisabled = runState.index === 0;
+    bottomEl.innerHTML =
+      '<button class="btn-back" id="runBackBtn"' + (backDisabled ? ' style="opacity:0.35;" disabled' : '') + '>←</button>' +
+      '<button class="btn-next" id="runNextBtn">' + (a.kind === "timer" ? "Skip" : "Done — next") + '</button>';
+    document.getElementById("runNextBtn").addEventListener("click", advanceStep);
+    if (!backDisabled) document.getElementById("runBackBtn").addEventListener("click", goBackStep);
+  }
+
+  function toggleTimer() {
+    var cs = currentStep();
+    if (runState.running) {
+      pauseTicker();
+    } else {
+      runState.running = true;
+      runState.endsAt = Date.now() + runState.remaining * 1000;
+      runTicker = setInterval(tickTimer, 250);
+    }
+    renderRun();
+  }
+
+  function tickTimer() {
+    if (!runState || !runState.running) return;
+    var msLeft = runState.endsAt - Date.now();
+    var secLeft = Math.max(0, Math.round(msLeft / 1000));
+    if (secLeft !== runState.remaining) {
+      runState.remaining = secLeft;
+      if (secLeft <= 0) {
+        pauseTicker();
+        beep();
+        if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+        advanceStep();
+        return;
+      }
+      updateTimerUI();
+    }
+  }
+
+  function updateTimerUI() {
+    var ring = document.querySelector(".ring-fg");
+    var label = document.querySelector(".ring-label");
+    var cs = currentStep();
+    if (!ring || !cs.action) return;
+    var total = cs.action.duration;
+    var pct = total > 0 ? (total - runState.remaining) / total : 0;
+    var radius = 88, circ = 2 * Math.PI * radius;
+    ring.setAttribute("stroke-dashoffset", circ * (1 - pct));
+    label.textContent = fmtDuration(runState.remaining);
+  }
+
+  function pauseTicker() {
+    if (runTicker) { clearInterval(runTicker); runTicker = null; }
+    if (runState) runState.running = false;
+  }
+
+  function advanceStep() {
+    pauseTicker();
+    var r = currentRoutine();
+    if (runState.index < r.steps.length - 1) {
+      runState.index++;
+      prepStep();
+      renderRun();
+    } else {
+      runState.finished = true;
+      renderRun();
+    }
+  }
+
+  function goBackStep() {
+    pauseTicker();
+    if (runState.index > 0) {
+      runState.index--;
+      prepStep();
+      renderRun();
+    }
+  }
+
+  function closeRun() {
+    pauseTicker();
+    runState = null;
+    document.getElementById("runOverlay").classList.add("hidden");
+    renderHome();
+  }
+
+  document.getElementById("runCloseBtn").addEventListener("click", function () {
+    if (runState && !runState.finished) {
+      if (!confirm("Stop this routine? Your progress won't be saved.")) return;
+    }
+    closeRun();
+  });
+
+  // ---------- Init ----------
+  setView("home");
+
+  setInterval(function () { if (currentView === "home") renderHome(); }, 60000);
+
+  (function handleDeepLink() {
+    var runId = new URLSearchParams(location.search).get("run");
+    if (runId && findRoutine(runId)) {
+      history.replaceState(null, "", location.pathname);
+      startRun(runId);
+    }
+  })();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>
