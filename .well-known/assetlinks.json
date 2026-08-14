@@ -2,7 +2,7 @@
       "relation": ["delegate_permission/common.handle_all_urls"],
       "target": {
         "namespace": "android_app",
-        "package_name": "com.routineflow.app",
-        "sha256_cert_fingerprints": ["E5:EF:8E:50:F0:74:32:9D:08:CF:34:05:DE:DE:D5:BE:56:0A:D7:C5:CB:A4:54:99:8B:6F:EE:F0:68:35:20:3A"]
+        "package_name": "com.zenstepflow.app",
+        "sha256_cert_fingerprints": ["30:FD:37:94:89:F7:29:1E:EE:7C:41:30:CE:72:5C:50:45:7F:BC:7D:11:A3:1F:34:26:B9:50:57:DC:F7:D0:ED"]
       }
     }]
