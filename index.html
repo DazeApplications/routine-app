@@ -208,10 +208,25 @@
 
   .emoji-picker { display: flex; flex-wrap: wrap; gap: 6px; }
   .emoji-picker button {
-    width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--card); font-size: 19px; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); font-size: 17px; cursor: pointer;
   }
   .emoji-picker button.selected { border-color: var(--violet); background: var(--paper-deep); }
+
+  .name-icon-row { display: flex; gap: 8px; align-items: flex-start; }
+  .name-icon-row input { flex: 1; }
+  .icon-select { position: relative; flex-shrink: 0; }
+  .icon-select-btn {
+    width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .icon-select-btn:hover { border-color: var(--violet); }
+  .icon-select-panel {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
+    width: 208px; max-width: 60vw; padding: 8px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+  }
+  .icon-select-panel.hidden { display: none; }
 
   .type-toggle { display: flex; gap: 8px; }
   .type-toggle button {
@@ -354,24 +369,28 @@
     <h2 id="routineModalTitle">New routine</h2>
     <div class="field">
       <label>Name</label>
-      <input type="text" id="routineName" placeholder="e.g. Morning skincare">
+      <div class="name-icon-row">
+        <input type="text" id="routineName" placeholder="e.g. Morning skincare">
+        <div class="icon-select">
+          <button type="button" class="icon-select-btn" id="routineIconBtn"></button>
+          <div class="emoji-picker icon-select-panel hidden" id="routineEmojiPicker"></div>
+        </div>
+      </div>
     </div>
-    <div class="field">
-      <label>Icon</label>
-      <div class="emoji-picker" id="routineEmojiPicker"></div>
-    </div>
-    <div class="section-label" style="margin-top:20px;">Steps</div>
-    <div class="step-list" id="routineStepList"></div>
-    <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
-
     <div class="section-label" style="margin-top:20px;">Trigger</div>
     <div class="field">
-      <label style="display:flex;align-items:center;justify-content:space-between;text-transform:none;font-size:14px;color:var(--ink);">
-        Scheduled time
-        <input type="checkbox" id="scheduleEnabled" style="width:auto;">
-      </label>
+      <label style="text-transform:none;font-size:11px;">Type</label>
+      <select id="triggerType">
+        <option value="off">None</option>
+        <option value="weekly">Day of week</option>
+        <option value="monthly">Day of month</option>
+        <option value="interval">Regular interval</option>
+        <option value="sun">Sunrise / sunset</option>
+        <option value="weather">Weather hits x°</option>
+      </select>
     </div>
-    <div class="field hidden" id="scheduleFields">
+
+    <div class="field hidden" id="triggerWeeklyFields">
       <div class="field">
         <label style="text-transform:none;font-size:11px;">Time</label>
         <input type="time" id="scheduleTime" value="07:00">
@@ -380,6 +399,88 @@
         <label style="text-transform:none;font-size:11px;">Days</label>
         <div class="day-toggle" id="scheduleDays"></div>
       </div>
+    </div>
+
+    <div class="field hidden" id="triggerMonthlyFields">
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Time</label>
+        <input type="time" id="monthlyTime" value="07:00">
+      </div>
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Day of month (1&ndash;31)</label>
+        <input type="number" id="monthlyDay" min="1" max="31" value="1">
+      </div>
+    </div>
+
+    <div class="field hidden" id="triggerIntervalFields">
+      <div class="duration-row">
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Every</label>
+          <input type="number" id="intervalValue" min="1" value="1">
+        </div>
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Unit</label>
+          <select id="intervalUnit">
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0;">Counts from when the routine was last completed.</p>
+    </div>
+
+    <div class="field hidden" id="triggerSunFields">
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Event</label>
+        <div class="type-toggle" id="sunEventToggle">
+          <button type="button" data-sun="sunrise">Sunrise</button>
+          <button type="button" data-sun="sunset">Sunset</button>
+        </div>
+      </div>
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">Offset (minutes, +/-)</label>
+        <input type="number" id="sunOffset" value="0">
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;" id="sunLocationStatus"></p>
+      <button type="button" class="btn-secondary" id="sunLocationBtn" style="margin-top:0;">Use my location</button>
+    </div>
+
+    <div class="field hidden" id="triggerWeatherFields">
+      <div class="field">
+        <label style="text-transform:none;font-size:11px;">When temperature is</label>
+        <div class="type-toggle" id="weatherCmpToggle">
+          <button type="button" data-weathercmp="above">Above</button>
+          <button type="button" data-weathercmp="below">Below</button>
+        </div>
+      </div>
+      <div class="duration-row">
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Target temp</label>
+          <input type="number" id="weatherTemp" value="20">
+        </div>
+        <div class="field">
+          <label style="text-transform:none;font-size:11px;">Unit</label>
+          <select id="weatherUnit">
+            <option value="C">°C</option>
+            <option value="F">°F</option>
+          </select>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;" id="weatherLocationStatus"></p>
+      <button type="button" class="btn-secondary" id="weatherLocationBtn" style="margin-top:0;">Use my location</button>
+    </div>
+
+    <div class="section-label" style="margin-top:20px;">Steps</div>
+    <div class="step-list" id="routineStepList"></div>
+    <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
+
+    <div class="field hidden" id="voiceLinkField">
+      <label style="text-transform:none;font-size:11px;">Voice link</label>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="voiceLinkInput" readonly style="flex:1;">
+        <button type="button" class="btn-secondary" id="copyVoiceLinkBtn" style="flex:none;width:auto;padding:0 14px;">Copy</button>
+      </div>
+      <p style="font-size:12px;color:var(--ink-soft);margin:6px 0 0;">Add this link to a Google Assistant routine or Siri Shortcut to start this routine by voice.</p>
     </div>
 
     <button class="btn-primary" id="saveRoutineBtn">Save routine</button>
@@ -408,11 +509,13 @@
     <h2 id="actionModalTitle">New action</h2>
     <div class="field">
       <label>Name</label>
-      <input type="text" id="actionName" placeholder="e.g. Wash face with oil cleanser">
-    </div>
-    <div class="field">
-      <label>Icon</label>
-      <div class="emoji-picker" id="actionEmojiPicker"></div>
+      <div class="name-icon-row">
+        <input type="text" id="actionName" placeholder="e.g. Wash face with oil cleanser">
+        <div class="icon-select">
+          <button type="button" class="icon-select-btn" id="actionIconBtn"></button>
+          <div class="emoji-picker icon-select-panel hidden" id="actionEmojiPicker"></div>
+        </div>
+      </div>
     </div>
     <div class="field">
       <label>Type</label>
@@ -450,6 +553,16 @@
         <input type="checkbox" id="soundToggle" style="width:auto;">
       </label>
     </div>
+    <div class="field hidden" id="syncField">
+      <label>Sync across devices</label>
+      <div id="syncSignedOut">
+        <button class="btn-secondary" id="signInBtn">Sign in with Google</button>
+      </div>
+      <div class="hidden" id="syncSignedIn">
+        <div id="syncAccountRow" style="font-size:14px;color:var(--ink-soft);margin-bottom:8px;"></div>
+        <button class="btn-secondary" id="signOutBtn">Sign out</button>
+      </div>
+    </div>
     <button class="btn-secondary btn-danger" id="resetDataBtn">Erase all routines &amp; actions</button>
   </div>
 </div>
@@ -466,6 +579,10 @@
   <div class="run-bottom" id="runBottom"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
 <script>
 (function () {
   "use strict";
@@ -484,22 +601,196 @@
   var runTicker = null;
   var audioCtx = null;
 
+  var TRIGGER_DEFAULTS = {
+    type: "off",
+    time: "07:00",
+    days: [1, 2, 3, 4, 5],
+    dayOfMonth: 1,
+    intervalValue: 1,
+    intervalUnit: "days",
+    sunEvent: "sunrise",
+    sunOffset: 0,
+    weatherCmp: "above",
+    weatherTemp: 20,
+    weatherUnit: "C",
+    lat: null,
+    lon: null
+  };
+
+  function migrateRoutine(r) {
+    if (!r.trigger) {
+      var sch = r.schedule;
+      r.trigger = Object.assign({}, TRIGGER_DEFAULTS, {
+        type: (sch && sch.enabled) ? "weekly" : "off",
+        time: (sch && sch.time) || "07:00",
+        days: (sch && sch.days) ? sch.days.slice() : TRIGGER_DEFAULTS.days.slice()
+      });
+      delete r.schedule;
+    }
+    if (r.lastCompletedAt === undefined) r.lastCompletedAt = null;
+    if (r.createdAt === undefined) r.createdAt = Date.now();
+    return r;
+  }
+
   function load() {
     var raw;
     try { raw = localStorage.getItem(STORE_KEY); } catch (e) { raw = null; }
     var data = raw ? JSON.parse(raw) : {};
     return {
       actions: data.actions || [],
-      routines: data.routines || [],
+      routines: (data.routines || []).map(migrateRoutine),
       settings: Object.assign({ sound: true }, data.settings || {})
     };
   }
 
   function save() {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+    bumpLocalUpdatedAt();
+    scheduleCloudPush();
   }
 
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  // ---------- Cloud sync ----------
+  var META_KEY = STORE_KEY + ".meta";
+  var syncEnabled = !!(window.FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("YOUR_") !== 0);
+  var auth = null, db = null, unsubscribeDoc = null, cloudPushTimer = null, lastPushedAt = 0, applyingRemote = false;
+
+  function getLocalMeta() {
+    try { return JSON.parse(localStorage.getItem(META_KEY)) || { updatedAt: 0 }; } catch (e) { return { updatedAt: 0 }; }
+  }
+  function setLocalMeta(meta) {
+    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) {}
+  }
+  function bumpLocalUpdatedAt() {
+    if (applyingRemote) return;
+    setLocalMeta({ updatedAt: Date.now() });
+  }
+
+  function scheduleCloudPush() {
+    if (!syncEnabled || applyingRemote || !auth || !auth.currentUser) return;
+    if (cloudPushTimer) clearTimeout(cloudPushTimer);
+    cloudPushTimer = setTimeout(pushToCloud, 800);
+  }
+
+  function pushToCloud() {
+    if (!auth || !auth.currentUser) return;
+    var ts = Date.now();
+    lastPushedAt = ts;
+    setLocalMeta({ updatedAt: ts });
+    db.collection("users").doc(auth.currentUser.uid).set({
+      actions: state.actions, routines: state.routines, settings: state.settings, updatedAt: ts
+    }).catch(function () {});
+  }
+
+  function applyRemote(cloud) {
+    applyingRemote = true;
+    state = {
+      actions: cloud.actions || [],
+      routines: (cloud.routines || []).map(migrateRoutine),
+      settings: Object.assign({ sound: true }, cloud.settings || {})
+    };
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+    setLocalMeta({ updatedAt: cloud.updatedAt || Date.now() });
+    applyingRemote = false;
+    renderCurrentView();
+  }
+
+  function startListeningToCloud(userUid) {
+    if (unsubscribeDoc) unsubscribeDoc();
+    unsubscribeDoc = db.collection("users").doc(userUid).onSnapshot(function (snap) {
+      if (!snap.exists) return;
+      var cloud = snap.data();
+      var cloudUpdatedAt = cloud.updatedAt || 0;
+      if (cloudUpdatedAt === lastPushedAt) return;
+      if (cloudUpdatedAt === getLocalMeta().updatedAt) return;
+      applyRemote(cloud);
+    });
+  }
+
+  function reconcileOnSignIn(userUid) {
+    var ref = db.collection("users").doc(userUid);
+    ref.get().then(function (snap) {
+      var localMeta = getLocalMeta();
+      var localHasData = state.actions.length || state.routines.length;
+      if (snap.exists) {
+        var cloud = snap.data();
+        var cloudUpdatedAt = cloud.updatedAt || 0;
+        var cloudHasData = (cloud.actions && cloud.actions.length) || (cloud.routines && cloud.routines.length);
+        if (cloudUpdatedAt === localMeta.updatedAt) {
+          // already in sync
+        } else if (!localHasData) {
+          applyRemote(cloud);
+        } else if (localMeta.updatedAt > cloudUpdatedAt) {
+          if (cloudHasData) {
+            var useCloud = confirm(
+              "Your account already has synced routines (last updated " + new Date(cloudUpdatedAt).toLocaleString() + ").\n" +
+              "This device also has local data (last updated " + new Date(localMeta.updatedAt).toLocaleString() + ").\n\n" +
+              "Press OK to use the ACCOUNT data (replacing what's on this device), or Cancel to keep THIS DEVICE's data (replacing your account data)."
+            );
+            if (useCloud) applyRemote(cloud); else pushToCloud();
+          } else {
+            pushToCloud();
+          }
+        } else {
+          applyRemote(cloud);
+        }
+      } else {
+        pushToCloud();
+      }
+      startListeningToCloud(userUid);
+    }).catch(function () {});
+  }
+
+  function updateSyncUI(user) {
+    var field = document.getElementById("syncField");
+    if (!field) return;
+    field.classList.remove("hidden");
+    var signedOut = document.getElementById("syncSignedOut");
+    var signedIn = document.getElementById("syncSignedIn");
+    if (user) {
+      signedOut.classList.add("hidden");
+      signedIn.classList.remove("hidden");
+      document.getElementById("syncAccountRow").textContent = "Signed in as " + (user.email || user.displayName || "your account");
+    } else {
+      signedOut.classList.remove("hidden");
+      signedIn.classList.add("hidden");
+    }
+  }
+
+  function initSync() {
+    if (!syncEnabled || typeof firebase === "undefined") return;
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      auth = firebase.auth();
+      db = firebase.firestore();
+    } catch (e) { syncEnabled = false; return; }
+
+    document.getElementById("syncField").classList.remove("hidden");
+
+    document.getElementById("signInBtn").addEventListener("click", function () {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithRedirect(provider).catch(function () {});
+    });
+    document.getElementById("signOutBtn").addEventListener("click", function () {
+      if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
+      auth.signOut();
+    });
+
+    auth.getRedirectResult().catch(function () {});
+
+    var reconciled = false;
+    auth.onAuthStateChanged(function (user) {
+      updateSyncUI(user);
+      if (user && !reconciled) {
+        reconciled = true;
+        reconcileOnSignIn(user.uid);
+      } else if (!user) {
+        reconciled = false;
+        if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
+      }
+    });
+  }
 
   function fmtDuration(sec) {
     var m = Math.floor(sec / 60), s = sec % 60;
@@ -523,15 +814,140 @@
     return days.slice().sort().map(function (d) { return DAY_NAMES[d]; }).join(" ");
   }
 
+  function timeToMinutes(time) {
+    var parts = (time || "00:00").split(":");
+    return (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
+  }
+
+  // ---------- Sunrise / sunset (NOAA-style approximation, no network needed) ----------
+  function toRad(d) { return d * Math.PI / 180; }
+  function toDeg(r) { return r * 180 / Math.PI; }
+  function fixRange(v, range) { while (v < 0) v += range; while (v >= range) v -= range; return v; }
+
+  function getSunTimeForDate(lat, lon, date, isSunset) {
+    var zenith = 90.833;
+    var year = date.getFullYear(), month = date.getMonth() + 1, day = date.getDate();
+    var N1 = Math.floor(275 * month / 9);
+    var N2 = Math.floor((month + 9) / 12);
+    var N3 = (1 + Math.floor((year - 4 * Math.floor(year / 4) + 2) / 3));
+    var N = N1 - (N2 * N3) + day - 30;
+
+    var lngHour = lon / 15;
+    var t = isSunset ? N + ((18 - lngHour) / 24) : N + ((6 - lngHour) / 24);
+
+    var M = (0.9856 * t) - 3.289;
+    var L = M + (1.916 * Math.sin(toRad(M))) + (0.020 * Math.sin(2 * toRad(M))) + 282.634;
+    L = fixRange(L, 360);
+
+    var RA = toDeg(Math.atan(0.91764 * Math.tan(toRad(L))));
+    RA = fixRange(RA, 360);
+    var Lquadrant = Math.floor(L / 90) * 90;
+    var RAquadrant = Math.floor(RA / 90) * 90;
+    RA = (RA + (Lquadrant - RAquadrant)) / 15;
+
+    var sinDec = 0.39782 * Math.sin(toRad(L));
+    var cosDec = Math.cos(Math.asin(sinDec));
+    var cosH = (Math.cos(toRad(zenith)) - (sinDec * Math.sin(toRad(lat)))) / (cosDec * Math.cos(toRad(lat)));
+    if (cosH > 1 || cosH < -1) return null; // sun never rises/sets that day at this latitude
+
+    var H = isSunset ? toDeg(Math.acos(cosH)) : 360 - toDeg(Math.acos(cosH));
+    H = H / 15;
+
+    var T = H + RA - (0.06571 * t) - 6.622;
+    var UT = fixRange(T - lngHour, 24);
+
+    var hours = Math.floor(UT);
+    var minutes = Math.floor((UT - hours) * 60);
+    return new Date(Date.UTC(year, month - 1, day, hours, minutes));
+  }
+
+  // ---------- Weather (Open-Meteo, keyless) ----------
+  var weatherCache = {};
+  var WEATHER_STALE_MS = 15 * 60 * 1000;
+
+  function weatherCacheKey(lat, lon) { return lat.toFixed(2) + "," + lon.toFixed(2); }
+  function getWeatherCacheEntry(lat, lon) { return weatherCache[weatherCacheKey(lat, lon)] || null; }
+
+  function fetchWeatherIfStale(lat, lon) {
+    var key = weatherCacheKey(lat, lon);
+    var entry = weatherCache[key];
+    if (entry && entry.fetching) return;
+    if (entry && (Date.now() - entry.fetchedAt) < WEATHER_STALE_MS) return;
+    weatherCache[key] = Object.assign({}, entry, { fetching: true });
+    var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current=temperature_2m";
+    fetch(url).then(function (res) { return res.json(); }).then(function (data) {
+      var temp = data && data.current && typeof data.current.temperature_2m === "number" ? data.current.temperature_2m : null;
+      weatherCache[key] = { tempC: temp, fetchedAt: Date.now(), fetching: false };
+      if (currentView === "home") renderHome();
+    }).catch(function () {
+      weatherCache[key] = { tempC: entry ? entry.tempC : null, fetchedAt: Date.now(), fetching: false };
+    });
+  }
+
+  function ensureWeatherData() {
+    state.routines.forEach(function (r) {
+      var t = r.trigger;
+      if (t && t.type === "weather" && t.lat != null && t.lon != null) fetchWeatherIfStale(t.lat, t.lon);
+    });
+  }
+
+  // ---------- Trigger "due" checks ----------
+  function isWeeklyDue(t, now) {
+    if (!t.days || !t.days.length) return false;
+    if (t.days.indexOf(now.getDay()) === -1) return false;
+    return (now.getHours() * 60 + now.getMinutes()) >= timeToMinutes(t.time);
+  }
+
+  function isMonthlyDue(t, now) {
+    if (now.getDate() !== (t.dayOfMonth || 1)) return false;
+    return (now.getHours() * 60 + now.getMinutes()) >= timeToMinutes(t.time);
+  }
+
+  function isIntervalDue(r, t, now) {
+    var baseline = r.lastCompletedAt || r.createdAt || 0;
+    var unitMs = t.intervalUnit === "hours" ? 3600000 : 86400000;
+    var intervalMs = Math.max(1, t.intervalValue || 1) * unitMs;
+    return (now.getTime() - baseline) >= intervalMs;
+  }
+
+  function isSunDue(t, now) {
+    if (t.lat == null || t.lon == null) return false;
+    var sunTime = getSunTimeForDate(t.lat, t.lon, now, t.sunEvent === "sunset");
+    if (!sunTime) return false;
+    sunTime = new Date(sunTime.getTime() + (t.sunOffset || 0) * 60000);
+    return now.getTime() >= sunTime.getTime() && now.toDateString() === sunTime.toDateString();
+  }
+
+  function isWeatherDue(t) {
+    if (t.lat == null || t.lon == null) return false;
+    var entry = getWeatherCacheEntry(t.lat, t.lon);
+    if (!entry || entry.tempC == null) return false;
+    var temp = t.weatherUnit === "F" ? (entry.tempC * 9 / 5 + 32) : entry.tempC;
+    return t.weatherCmp === "above" ? temp >= t.weatherTemp : temp <= t.weatherTemp;
+  }
+
   function isRoutineDue(r) {
-    var sch = r.schedule;
-    if (!sch || !sch.enabled || !sch.days.length) return false;
+    var t = r.trigger;
+    if (!t || t.type === "off") return false;
     var now = new Date();
-    if (sch.days.indexOf(now.getDay()) === -1) return false;
-    var parts = (sch.time || "00:00").split(":");
-    var schedMinutes = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
-    var nowMinutes = now.getHours() * 60 + now.getMinutes();
-    return nowMinutes >= schedMinutes;
+    if (t.type === "weekly") return isWeeklyDue(t, now);
+    if (t.type === "monthly") return isMonthlyDue(t, now);
+    if (t.type === "interval") return isIntervalDue(r, t, now);
+    if (t.type === "sun") return isSunDue(t, now);
+    if (t.type === "weather") return isWeatherDue(t);
+    return false;
+  }
+
+  function fmtTriggerSummary(t) {
+    if (t.type === "weekly") return "⏰ " + fmtTime12(t.time) + " " + fmtScheduleDays(t.days);
+    if (t.type === "monthly") return "⏰ Day " + t.dayOfMonth + " · " + fmtTime12(t.time);
+    if (t.type === "interval") return "🔁 Every " + t.intervalValue + " " + t.intervalUnit;
+    if (t.type === "sun") {
+      var label = (t.sunEvent === "sunset" ? "🌇 Sunset" : "🌅 Sunrise");
+      return label + (t.sunOffset ? " " + (t.sunOffset > 0 ? "+" : "") + t.sunOffset + "m" : "");
+    }
+    if (t.type === "weather") return "🌡️ " + (t.weatherCmp === "above" ? "Above " : "Below ") + t.weatherTemp + "°" + t.weatherUnit;
+    return "";
   }
 
   function findAction(id) {
@@ -562,6 +978,7 @@
 
   // ---------- Home / routines list ----------
   function renderHome() {
+    ensureWeatherData();
     var el = document.getElementById("homeContent");
     if (!state.routines.length) {
       el.innerHTML =
@@ -581,8 +998,8 @@
       var meta = r.steps.length + (r.steps.length === 1 ? " step" : " steps");
       if (timedSteps) meta += " · ~" + Math.ceil(totalSec / 60) + " min";
       var due = false;
-      if (r.schedule && r.schedule.enabled) {
-        meta += " · ⏰ " + fmtTime12(r.schedule.time) + " " + fmtScheduleDays(r.schedule.days);
+      if (r.trigger && r.trigger.type !== "off") {
+        meta += " · " + fmtTriggerSummary(r.trigger);
         due = isRoutineDue(r);
       }
       html +=
@@ -670,10 +1087,29 @@
         el.querySelectorAll("button").forEach(function (x) { x.classList.remove("selected"); });
         b.classList.add("selected");
         onPick(em);
+        el.classList.add("hidden");
       });
       el.appendChild(b);
     });
   }
+
+  function setupIconToggle(btnId, panelId) {
+    var btn = document.getElementById(btnId);
+    var panel = document.getElementById(panelId);
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var willOpen = panel.classList.contains("hidden");
+      document.querySelectorAll(".icon-select-panel").forEach(function (p) { p.classList.add("hidden"); });
+      if (willOpen) panel.classList.remove("hidden");
+    });
+  }
+  document.addEventListener("click", function (e) {
+    if (!e.target.closest(".icon-select")) {
+      document.querySelectorAll(".icon-select-panel").forEach(function (p) { p.classList.add("hidden"); });
+    }
+  });
+  setupIconToggle("routineIconBtn", "routineEmojiPicker");
+  setupIconToggle("actionIconBtn", "actionEmojiPicker");
 
   // ---------- Action modal ----------
   var actionPickedEmoji = "🧴";
@@ -686,7 +1122,11 @@
     document.getElementById("actionName").value = a ? a.name : "";
     actionPickedEmoji = a ? a.icon : "🧴";
     actionPickedKind = a ? a.kind : "check";
-    buildEmojiPicker("actionEmojiPicker", actionPickedEmoji, function (em) { actionPickedEmoji = em; });
+    document.getElementById("actionIconBtn").textContent = actionPickedEmoji;
+    buildEmojiPicker("actionEmojiPicker", actionPickedEmoji, function (em) {
+      actionPickedEmoji = em;
+      document.getElementById("actionIconBtn").textContent = em;
+    });
     setKind(actionPickedKind);
     var mins = a && a.kind === "timer" ? Math.floor(a.duration / 60) : 2;
     var secs = a && a.kind === "timer" ? a.duration % 60 : 0;
@@ -766,22 +1206,124 @@
       name: r ? r.name : "",
       icon: r ? r.icon : "🗓️",
       steps: r ? r.steps.map(function (s) { return { stepId: uid(), actionId: s.actionId }; }) : [],
-      schedule: r && r.schedule ?
-        { enabled: r.schedule.enabled, time: r.schedule.time, days: r.schedule.days.slice() } :
-        { enabled: false, time: "07:00", days: [1, 2, 3, 4, 5] }
+      trigger: Object.assign({}, TRIGGER_DEFAULTS, r ? r.trigger : {}, {
+        days: ((r && r.trigger && r.trigger.days) || TRIGGER_DEFAULTS.days).slice()
+      })
     };
     document.getElementById("routineModalTitle").textContent = r ? "Edit routine" : "New routine";
     document.getElementById("routineName").value = editingRoutineDraft.name;
     routinePickedEmoji = editingRoutineDraft.icon;
-    buildEmojiPicker("routineEmojiPicker", routinePickedEmoji, function (em) { routinePickedEmoji = em; });
+    document.getElementById("routineIconBtn").textContent = routinePickedEmoji;
+    buildEmojiPicker("routineEmojiPicker", routinePickedEmoji, function (em) {
+      routinePickedEmoji = em;
+      document.getElementById("routineIconBtn").textContent = em;
+    });
     document.getElementById("deleteRoutineBtn").classList.toggle("hidden", !r);
-    document.getElementById("scheduleEnabled").checked = editingRoutineDraft.schedule.enabled;
-    document.getElementById("scheduleTime").value = editingRoutineDraft.schedule.time;
-    document.getElementById("scheduleFields").classList.toggle("hidden", !editingRoutineDraft.schedule.enabled);
-    buildDayToggle(editingRoutineDraft.schedule.days);
+    document.getElementById("voiceLinkField").classList.toggle("hidden", !r);
+    if (r) document.getElementById("voiceLinkInput").value = location.origin + location.pathname + "?run=" + r.id;
+
+    var trig = editingRoutineDraft.trigger;
+    document.getElementById("triggerType").value = trig.type;
+    document.getElementById("scheduleTime").value = trig.time;
+    document.getElementById("monthlyTime").value = trig.time;
+    document.getElementById("monthlyDay").value = trig.dayOfMonth;
+    document.getElementById("intervalValue").value = trig.intervalValue;
+    document.getElementById("intervalUnit").value = trig.intervalUnit;
+    document.getElementById("sunOffset").value = trig.sunOffset;
+    document.getElementById("weatherTemp").value = trig.weatherTemp;
+    document.getElementById("weatherUnit").value = trig.weatherUnit;
+    setSunEvent(trig.sunEvent);
+    setWeatherCmp(trig.weatherCmp);
+    buildDayToggle(trig.days);
+    updateLocationStatus();
+    showTriggerFields(trig.type);
+
     renderRoutineStepList();
     openModal("routineModal");
   }
+
+  function showTriggerFields(type) {
+    document.getElementById("triggerWeeklyFields").classList.toggle("hidden", type !== "weekly");
+    document.getElementById("triggerMonthlyFields").classList.toggle("hidden", type !== "monthly");
+    document.getElementById("triggerIntervalFields").classList.toggle("hidden", type !== "interval");
+    document.getElementById("triggerSunFields").classList.toggle("hidden", type !== "sun");
+    document.getElementById("triggerWeatherFields").classList.toggle("hidden", type !== "weather");
+  }
+
+  function setSunEvent(ev) {
+    editingRoutineDraft.trigger.sunEvent = ev;
+    document.querySelectorAll("#sunEventToggle button").forEach(function (b) {
+      b.classList.toggle("selected", b.getAttribute("data-sun") === ev);
+    });
+  }
+
+  function setWeatherCmp(cmp) {
+    editingRoutineDraft.trigger.weatherCmp = cmp;
+    document.querySelectorAll("#weatherCmpToggle button").forEach(function (b) {
+      b.classList.toggle("selected", b.getAttribute("data-weathercmp") === cmp);
+    });
+  }
+
+  function updateLocationStatus() {
+    var t = editingRoutineDraft.trigger;
+    var has = t.lat != null && t.lon != null;
+    var txt = has ? "Location set (" + t.lat.toFixed(2) + ", " + t.lon.toFixed(2) + ")" : "No location set yet — tap below.";
+    document.getElementById("sunLocationStatus").textContent = txt;
+    document.getElementById("weatherLocationStatus").textContent = txt;
+  }
+
+  function requestTriggerLocation() {
+    if (!navigator.geolocation) {
+      document.getElementById("sunLocationStatus").textContent = "Geolocation isn't supported on this device.";
+      document.getElementById("weatherLocationStatus").textContent = "Geolocation isn't supported on this device.";
+      return;
+    }
+    document.getElementById("sunLocationStatus").textContent = "Locating…";
+    document.getElementById("weatherLocationStatus").textContent = "Locating…";
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      editingRoutineDraft.trigger.lat = pos.coords.latitude;
+      editingRoutineDraft.trigger.lon = pos.coords.longitude;
+      updateLocationStatus();
+    }, function () {
+      var errText = "Couldn't get your location — allow location access and try again.";
+      document.getElementById("sunLocationStatus").textContent = errText;
+      document.getElementById("weatherLocationStatus").textContent = errText;
+    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+  }
+
+  document.getElementById("triggerType").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.type = e.target.value;
+    showTriggerFields(e.target.value);
+  });
+  document.getElementById("monthlyTime").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.time = e.target.value || "07:00";
+  });
+  document.getElementById("monthlyDay").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.dayOfMonth = Math.min(31, Math.max(1, parseInt(e.target.value, 10) || 1));
+  });
+  document.getElementById("intervalValue").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.intervalValue = Math.max(1, parseInt(e.target.value, 10) || 1);
+  });
+  document.getElementById("intervalUnit").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.intervalUnit = e.target.value;
+  });
+  document.getElementById("sunOffset").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.sunOffset = parseInt(e.target.value, 10) || 0;
+  });
+  document.getElementById("weatherTemp").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.weatherTemp = parseFloat(e.target.value) || 0;
+  });
+  document.getElementById("weatherUnit").addEventListener("change", function (e) {
+    editingRoutineDraft.trigger.weatherUnit = e.target.value;
+  });
+  document.querySelectorAll("#sunEventToggle button").forEach(function (b) {
+    b.addEventListener("click", function () { setSunEvent(b.getAttribute("data-sun")); });
+  });
+  document.querySelectorAll("#weatherCmpToggle button").forEach(function (b) {
+    b.addEventListener("click", function () { setWeatherCmp(b.getAttribute("data-weathercmp")); });
+  });
+  document.getElementById("sunLocationBtn").addEventListener("click", requestTriggerLocation);
+  document.getElementById("weatherLocationBtn").addEventListener("click", requestTriggerLocation);
 
   function buildDayToggle(selectedDays) {
     var el = document.getElementById("scheduleDays");
@@ -792,7 +1334,7 @@
       b.textContent = label;
       if (selectedDays.indexOf(idx) !== -1) b.classList.add("selected");
       b.addEventListener("click", function () {
-        var days = editingRoutineDraft.schedule.days;
+        var days = editingRoutineDraft.trigger.days;
         var i = days.indexOf(idx);
         if (i === -1) days.push(idx); else days.splice(i, 1);
         b.classList.toggle("selected");
@@ -801,12 +1343,8 @@
     });
   }
 
-  document.getElementById("scheduleEnabled").addEventListener("change", function (e) {
-    editingRoutineDraft.schedule.enabled = e.target.checked;
-    document.getElementById("scheduleFields").classList.toggle("hidden", !e.target.checked);
-  });
   document.getElementById("scheduleTime").addEventListener("change", function (e) {
-    editingRoutineDraft.schedule.time = e.target.value || "07:00";
+    editingRoutineDraft.trigger.time = e.target.value || "07:00";
   });
 
   function renderRoutineStepList() {
@@ -911,25 +1449,49 @@
     var name = document.getElementById("routineName").value.trim();
     if (!name) { document.getElementById("routineName").focus(); return; }
     if (!editingRoutineDraft.steps.length) { alert("Add at least one step first."); return; }
-    if (editingRoutineDraft.schedule.enabled && !editingRoutineDraft.schedule.days.length) {
-      alert("Pick at least one day, or turn off the scheduled time.");
+    var trig = editingRoutineDraft.trigger;
+    if (trig.type === "weekly" && !trig.days.length) {
+      alert("Pick at least one day, or change the trigger type.");
+      return;
+    }
+    if ((trig.type === "sun" || trig.type === "weather") && (trig.lat == null || trig.lon == null)) {
+      alert("Set a location for this trigger first.");
       return;
     }
     var stepsOut = editingRoutineDraft.steps.map(function (s) { return { actionId: s.actionId }; });
-    var scheduleOut = {
-      enabled: editingRoutineDraft.schedule.enabled,
-      time: editingRoutineDraft.schedule.time,
-      days: editingRoutineDraft.schedule.days.slice()
-    };
+    var triggerOut = Object.assign({}, trig, { days: trig.days.slice() });
     if (editingRoutineDraft.id) {
       var r = findRoutine(editingRoutineDraft.id);
-      r.name = name; r.icon = routinePickedEmoji; r.steps = stepsOut; r.schedule = scheduleOut;
+      r.name = name; r.icon = routinePickedEmoji; r.steps = stepsOut; r.trigger = triggerOut;
     } else {
-      state.routines.push({ id: uid(), name: name, icon: routinePickedEmoji, steps: stepsOut, schedule: scheduleOut });
+      state.routines.push({
+        id: uid(), name: name, icon: routinePickedEmoji, steps: stepsOut, trigger: triggerOut,
+        lastCompletedAt: null, createdAt: Date.now()
+      });
     }
     save();
     closeModal("routineModal");
     renderHome();
+  });
+
+  document.getElementById("copyVoiceLinkBtn").addEventListener("click", function () {
+    var input = document.getElementById("voiceLinkInput");
+    var btn = document.getElementById("copyVoiceLinkBtn");
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    function showCopied() {
+      btn.textContent = "Copied!";
+      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(input.value).then(showCopied, function () {
+        document.execCommand("copy");
+        showCopied();
+      });
+    } else {
+      document.execCommand("copy");
+      showCopied();
+    }
   });
 
   document.getElementById("deleteRoutineBtn").addEventListener("click", function () {
@@ -1170,6 +1732,10 @@
 
   function closeRun() {
     pauseTicker();
+    if (runState && runState.finished) {
+      var r = findRoutine(runState.routineId);
+      if (r) { r.lastCompletedAt = Date.now(); save(); }
+    }
     runState = null;
     document.getElementById("runOverlay").classList.add("hidden");
     renderHome();
@@ -1183,6 +1749,7 @@
   });
 
   // ---------- Init ----------
+  initSync();
   setView("home");
 
   setInterval(function () { if (currentView === "home") renderHome(); }, 60000);

@@ -5,7 +5,7 @@
       "name": "routines-app",
       "runtimeExecutable": "powershell",
       "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/serve.ps1"],
-      "port": 8936
+      "port": 8937
     }
   ]
 }

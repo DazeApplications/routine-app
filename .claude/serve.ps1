@@ -1,5 +1,5 @@
 $root = Split-Path -Parent $PSScriptRoot
-$port = 8936
+$port = 8937
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:$port/")
 $listener.Start()
