@@ -112,14 +112,6 @@
     background: none; border: 1px solid var(--line); cursor: pointer; font-size: 14px; color: var(--ink-soft);
   }
   .ghost-btn:hover { border-color: var(--violet); color: var(--violet); }
-  .ghost-btn.listening {
-    border-color: var(--warm); color: var(--warm);
-    animation: mic-pulse 1s ease-in-out infinite;
-  }
-  @keyframes mic-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,159,69,0.35); }
-    50% { box-shadow: 0 0 0 6px rgba(255,159,69,0); }
-  }
 
   .action-row {
     background: var(--card);
@@ -474,15 +466,6 @@
     <div class="step-list" id="routineStepList"></div>
     <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
 
-    <div class="field hidden" id="voiceLinkField">
-      <label style="text-transform:none;font-size:11px;">Voice link</label>
-      <div style="display:flex;gap:6px;">
-        <input type="text" id="voiceLinkInput" readonly style="flex:1;">
-        <button type="button" class="btn-secondary" id="copyVoiceLinkBtn" style="flex:none;width:auto;padding:0 14px;">Copy</button>
-      </div>
-      <p style="font-size:12px;color:var(--ink-soft);margin:6px 0 0;">Add this link to a Google Assistant routine or Siri Shortcut to start this routine by voice.</p>
-    </div>
-
     <button class="btn-primary" id="saveRoutineBtn">Save routine</button>
     <button class="btn-secondary btn-danger hidden" id="deleteRoutineBtn">Delete routine</button>
   </div>
@@ -591,8 +574,6 @@
 
   var STORE_KEY = "routineapp.v1";
   var EMOJI_CHOICES = ["🧴","🚿","🧼","💧","🪥","🧖","🧘","🏃","🍋","☕","📖","💊","🧹","🛏️","🌿","🧦","🧠","🎯","⏰","✨","😴","🥤","🪞","🧊"];
-  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var VOICE_CONFIRM_WORDS = ["start", "go", "begin", "yes", "play"];
 
   var state = load();
   var currentView = "home";
@@ -1037,7 +1018,6 @@
           '<div class="info"><h3>' + escapeHtml(r.name) + (due ? ' <span class="due-badge">Due now</span>' : '') + '</h3><div class="meta">' + meta + '</div></div>' +
           '<div class="actions">' +
             '<button class="ghost-btn" data-edit-routine="' + r.id + '">✎</button>' +
-            (SpeechRec ? '<button class="ghost-btn" data-voice-routine="' + r.id + '" title="Tap and say &quot;start&quot;">🎤</button>' : '') +
             '<button class="play-btn" data-play-routine="' + r.id + '">▶</button>' +
           '</div>' +
         '</div>';
@@ -1047,9 +1027,6 @@
 
     el.querySelectorAll("[data-play-routine]").forEach(function (btn) {
       btn.addEventListener("click", function () { startRun(btn.getAttribute("data-play-routine")); });
-    });
-    el.querySelectorAll("[data-voice-routine]").forEach(function (btn) {
-      btn.addEventListener("click", function () { startVoiceTrigger(btn.getAttribute("data-voice-routine"), btn); });
     });
     el.querySelectorAll("[data-edit-routine]").forEach(function (btn) {
       btn.addEventListener("click", function () { openRoutineModal(btn.getAttribute("data-edit-routine")); });
@@ -1248,8 +1225,6 @@
       document.getElementById("routineIconBtn").textContent = em;
     });
     document.getElementById("deleteRoutineBtn").classList.toggle("hidden", !r);
-    document.getElementById("voiceLinkField").classList.toggle("hidden", !r);
-    if (r) document.getElementById("voiceLinkInput").value = location.origin + location.pathname + "?run=" + r.id;
 
     var trig = editingRoutineDraft.trigger;
     document.getElementById("triggerType").value = trig.type;
@@ -1503,26 +1478,6 @@
     renderHome();
   });
 
-  document.getElementById("copyVoiceLinkBtn").addEventListener("click", function () {
-    var input = document.getElementById("voiceLinkInput");
-    var btn = document.getElementById("copyVoiceLinkBtn");
-    input.select();
-    input.setSelectionRange(0, input.value.length);
-    function showCopied() {
-      btn.textContent = "Copied!";
-      setTimeout(function () { btn.textContent = "Copy"; }, 1500);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(input.value).then(showCopied, function () {
-        document.execCommand("copy");
-        showCopied();
-      });
-    } else {
-      document.execCommand("copy");
-      showCopied();
-    }
-  });
-
   document.getElementById("deleteRoutineBtn").addEventListener("click", function () {
     if (!editingRoutineDraft.id) return;
     if (!confirm("Delete this routine?")) return;
@@ -1580,28 +1535,6 @@
     prepStep();
     document.getElementById("runOverlay").classList.remove("hidden");
     renderRun();
-  }
-
-  function startVoiceTrigger(routineId, btn) {
-    if (!SpeechRec || btn.classList.contains("listening")) return;
-    var recognition = new SpeechRec();
-    recognition.lang = navigator.language || "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    btn.classList.add("listening");
-    recognition.onresult = function (e) {
-      var transcript = e.results[0][0].transcript.toLowerCase();
-      var matched = VOICE_CONFIRM_WORDS.some(function (w) { return transcript.indexOf(w) !== -1; });
-      if (matched) startRun(routineId);
-    };
-    recognition.onerror = function (e) {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        alert("Microphone access was blocked. Allow microphone access in your browser settings to use voice start.");
-      }
-    };
-    recognition.onend = function () { btn.classList.remove("listening"); };
-    try { recognition.start(); } catch (e) { btn.classList.remove("listening"); }
   }
 
   function currentRoutine() { return findRoutine(runState.routineId); }
@@ -1782,14 +1715,6 @@
   setView("home");
 
   setInterval(function () { if (currentView === "home") renderHome(); }, 60000);
-
-  (function handleDeepLink() {
-    var runId = new URLSearchParams(location.search).get("run");
-    if (runId && findRoutine(runId)) {
-      history.replaceState(null, "", location.pathname);
-      startRun(runId);
-    }
-  })();
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
