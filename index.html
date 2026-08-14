@@ -776,15 +776,15 @@
       el.classList.remove("hidden");
     }
 
+    var REDIRECT_FLAG = "routineapp.signinRedirectPending";
+
     document.getElementById("signInBtn").addEventListener("click", function () {
       showSyncError(null);
       var provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(function (err) {
-        if (err && (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment")) {
-          auth.signInWithRedirect(provider).catch(showSyncError);
-        } else if (err && err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
-          showSyncError(err);
-        }
+      try { sessionStorage.setItem(REDIRECT_FLAG, "1"); } catch (e) {}
+      auth.signInWithRedirect(provider).catch(function (err) {
+        try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) {}
+        showSyncError(err);
       });
     });
     document.getElementById("signOutBtn").addEventListener("click", function () {
@@ -792,7 +792,14 @@
       auth.signOut();
     });
 
-    auth.getRedirectResult().catch(showSyncError);
+    var wasRedirectPending = false;
+    try { wasRedirectPending = sessionStorage.getItem(REDIRECT_FLAG) === "1"; sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) {}
+
+    auth.getRedirectResult().then(function (result) {
+      if (wasRedirectPending && !(result && result.user)) {
+        showSyncError({ message: "Google sign-in didn't come back with an account. This usually means Chrome is blocking third-party storage access needed for the sign-in redirect — check Settings > Privacy and security > Third-party cookies isn't set to Block, or try a different browser." });
+      }
+    }).catch(showSyncError);
 
     var reconciled = false;
     auth.onAuthStateChanged(function (user) {
