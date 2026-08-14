@@ -211,8 +211,10 @@
   .icon-select-btn {
     width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--card); font-size: 20px; cursor: pointer; line-height: 1;
+    text-align: center; font-family: inherit; padding: 0; color: var(--ink);
   }
   .icon-select-btn:hover { border-color: var(--violet); }
+  .icon-select-btn:focus { outline: none; border-color: var(--violet); }
   .icon-select-panel {
     position: absolute; right: 0; top: calc(100% + 6px); z-index: 20;
     width: 208px; max-width: 60vw; padding: 8px; border: 1px solid var(--line); border-radius: 12px;
@@ -364,7 +366,7 @@
       <div class="name-icon-row">
         <input type="text" id="routineName" placeholder="e.g. Morning skincare">
         <div class="icon-select">
-          <button type="button" class="icon-select-btn" id="routineIconBtn"></button>
+          <input type="text" class="icon-select-btn" id="routineIconBtn" maxlength="8" autocomplete="off" spellcheck="false" title="Click for quick picks, or press Win + . to choose from all emoji">
           <div class="emoji-picker icon-select-panel hidden" id="routineEmojiPicker"></div>
         </div>
       </div>
@@ -495,7 +497,7 @@
       <div class="name-icon-row">
         <input type="text" id="actionName" placeholder="e.g. Wash face with oil cleanser">
         <div class="icon-select">
-          <button type="button" class="icon-select-btn" id="actionIconBtn"></button>
+          <input type="text" class="icon-select-btn" id="actionIconBtn" maxlength="8" autocomplete="off" spellcheck="false" title="Click for quick picks, or press Win + . to choose from all emoji">
           <div class="emoji-picker icon-select-panel hidden" id="actionEmojiPicker"></div>
         </div>
       </div>
@@ -1099,7 +1101,7 @@
     });
   }
 
-  function setupIconToggle(btnId, panelId) {
+  function setupIconToggle(btnId, panelId, onType) {
     var btn = document.getElementById(btnId);
     var panel = document.getElementById(panelId);
     btn.addEventListener("click", function (e) {
@@ -1108,14 +1110,20 @@
       document.querySelectorAll(".icon-select-panel").forEach(function (p) { p.classList.add("hidden"); });
       if (willOpen) panel.classList.remove("hidden");
     });
+    // Lets the field be typed/pasted into directly, e.g. via the Windows emoji
+    // panel (Win + .), instead of only the curated quick-pick grid below.
+    btn.addEventListener("input", function () {
+      onType(btn.value);
+      panel.classList.add("hidden");
+    });
   }
   document.addEventListener("click", function (e) {
     if (!e.target.closest(".icon-select")) {
       document.querySelectorAll(".icon-select-panel").forEach(function (p) { p.classList.add("hidden"); });
     }
   });
-  setupIconToggle("routineIconBtn", "routineEmojiPicker");
-  setupIconToggle("actionIconBtn", "actionEmojiPicker");
+  setupIconToggle("routineIconBtn", "routineEmojiPicker", function (val) { routinePickedEmoji = val; });
+  setupIconToggle("actionIconBtn", "actionEmojiPicker", function (val) { actionPickedEmoji = val; });
 
   // ---------- Action modal ----------
   var actionPickedEmoji = "🧴";
@@ -1128,10 +1136,10 @@
     document.getElementById("actionName").value = a ? a.name : "";
     actionPickedEmoji = a ? a.icon : "🧴";
     actionPickedKind = a ? a.kind : "check";
-    document.getElementById("actionIconBtn").textContent = actionPickedEmoji;
+    document.getElementById("actionIconBtn").value = actionPickedEmoji;
     buildEmojiPicker("actionEmojiPicker", actionPickedEmoji, function (em) {
       actionPickedEmoji = em;
-      document.getElementById("actionIconBtn").textContent = em;
+      document.getElementById("actionIconBtn").value = em;
     });
     setKind(actionPickedKind);
     var mins = a && a.kind === "timer" ? Math.floor(a.duration / 60) : 2;
@@ -1154,6 +1162,7 @@
   document.getElementById("saveActionBtn").addEventListener("click", function () {
     var name = document.getElementById("actionName").value.trim();
     if (!name) { document.getElementById("actionName").focus(); return; }
+    actionPickedEmoji = actionPickedEmoji.trim() || "🧴";
     var duration = 0;
     if (actionPickedKind === "timer") {
       var m = parseInt(document.getElementById("durationMin").value, 10) || 0;
@@ -1219,10 +1228,10 @@
     document.getElementById("routineModalTitle").textContent = r ? "Edit routine" : "New routine";
     document.getElementById("routineName").value = editingRoutineDraft.name;
     routinePickedEmoji = editingRoutineDraft.icon;
-    document.getElementById("routineIconBtn").textContent = routinePickedEmoji;
+    document.getElementById("routineIconBtn").value = routinePickedEmoji;
     buildEmojiPicker("routineEmojiPicker", routinePickedEmoji, function (em) {
       routinePickedEmoji = em;
-      document.getElementById("routineIconBtn").textContent = em;
+      document.getElementById("routineIconBtn").value = em;
     });
     document.getElementById("deleteRoutineBtn").classList.toggle("hidden", !r);
 
@@ -1452,6 +1461,7 @@
   document.getElementById("saveRoutineBtn").addEventListener("click", function () {
     var name = document.getElementById("routineName").value.trim();
     if (!name) { document.getElementById("routineName").focus(); return; }
+    routinePickedEmoji = routinePickedEmoji.trim() || "🗓️";
     if (!editingRoutineDraft.steps.length) { alert("Add at least one step first."); return; }
     var trig = editingRoutineDraft.trigger;
     if (trig.type === "weekly" && !trig.days.length) {
