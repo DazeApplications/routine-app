@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.routineflow.app",
+        "sha256_cert_fingerprints": ["E5:EF:8E:50:F0:74:32:9D:08:CF:34:05:DE:DE:D5:BE:56:0A:D7:C5:CB:A4:54:99:8B:6F:EE:F0:68:35:20:3A"]
+      }
+    }]
