@@ -562,6 +562,7 @@
         <div id="syncAccountRow" style="font-size:14px;color:var(--ink-soft);margin-bottom:8px;"></div>
         <button class="btn-secondary" id="signOutBtn">Sign out</button>
       </div>
+      <div class="hidden" id="syncError" style="font-size:13px;color:var(--danger);margin-top:8px;"></div>
     </div>
     <button class="btn-secondary btn-danger" id="resetDataBtn">Erase all routines &amp; actions</button>
   </div>
@@ -768,16 +769,30 @@
 
     document.getElementById("syncField").classList.remove("hidden");
 
+    function showSyncError(err) {
+      var el = document.getElementById("syncError");
+      if (!err) { el.classList.add("hidden"); el.textContent = ""; return; }
+      el.textContent = "Sign-in failed: " + (err.code || err.message || err);
+      el.classList.remove("hidden");
+    }
+
     document.getElementById("signInBtn").addEventListener("click", function () {
+      showSyncError(null);
       var provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithRedirect(provider).catch(function () {});
+      auth.signInWithPopup(provider).catch(function (err) {
+        if (err && (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment")) {
+          auth.signInWithRedirect(provider).catch(showSyncError);
+        } else if (err && err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
+          showSyncError(err);
+        }
+      });
     });
     document.getElementById("signOutBtn").addEventListener("click", function () {
       if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
       auth.signOut();
     });
 
-    auth.getRedirectResult().catch(function () {});
+    auth.getRedirectResult().catch(showSyncError);
 
     var reconciled = false;
     auth.onAuthStateChanged(function (user) {
