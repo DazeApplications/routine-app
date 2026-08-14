@@ -13,7 +13,7 @@
 //   4. Build > Firestore Database > Create database (start in production mode),
 //      then paste the rules from firestore.rules into the Rules tab and Publish.
 //   5. Authentication > Settings > Authorized domains > add the domain the app
-//      is served from (e.g. zoeehurst93.github.io).
+//      is served from (e.g. dazeapplications.github.io).
 //
 // Until this is filled in with real values, sync stays hidden in Settings and
 // the app works exactly as before, storing data on-device only.
