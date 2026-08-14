@@ -113,6 +113,23 @@
   }
   .ghost-btn:hover { border-color: var(--violet); color: var(--violet); }
 
+  .group-members { display: flex; flex-direction: column; gap: 6px; margin: -2px 0 0 20px; padding-left: 22px; border-left: 2px solid var(--line); }
+  .group-member-row {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .group-member-row .emoji { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
+  .group-member-row .name { flex: 1; min-width: 0; font-size: 13px; color: var(--ink); }
+  .group-member-row .play-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+    background: var(--violet); color: #fff; border: none; cursor: pointer; font-size: 12px;
+  }
+  .group-member-row .play-btn:hover { background: var(--violet-deep); }
+
   .action-row {
     background: var(--card);
     border: 1px solid var(--line);
@@ -360,12 +377,17 @@
       <div class="section-label">Your custom actions</div>
       <div id="actionsContent"></div>
     </section>
+
+    <section id="view-groups" class="view hidden">
+      <div id="groupsContent"></div>
+    </section>
   </main>
 
   <button class="fab" id="fabBtn" title="Add">+</button>
 
   <nav class="bottom-nav">
     <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-btn" data-view="groups"><span class="nav-icon">📦</span>Groups</button>
     <button class="nav-btn" data-view="actions"><span class="nav-icon">🧩</span>Actions</button>
   </nav>
 </div>
@@ -487,6 +509,46 @@
 
     <button class="btn-primary" id="saveRoutineBtn">Save routine</button>
     <button class="btn-secondary btn-danger hidden" id="deleteRoutineBtn">Delete routine</button>
+  </div>
+</div>
+
+<!-- Group editor modal -->
+<div class="modal-backdrop hidden" id="groupModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="groupModal">✕</button></div>
+    <h2 id="groupModalTitle">New group</h2>
+    <div class="field">
+      <label>Name</label>
+      <div class="name-icon-row">
+        <input type="text" id="groupName" placeholder="e.g. Full morning">
+        <div class="icon-select">
+          <input type="text" class="icon-select-btn" id="groupIconBtn" maxlength="8" autocomplete="off" spellcheck="false" title="Click for quick picks, or press Win + . to choose from all emoji">
+          <div class="icon-select-panel hidden" id="groupIconPanel">
+            <input type="text" class="icon-picker-search" id="groupIconSearch" placeholder="Search" autocomplete="off">
+            <div class="icon-picker-results" id="groupEmojiPicker"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-label" style="margin-top:20px;">Routines</div>
+    <div class="step-list" id="groupRoutineList"></div>
+    <button class="btn-secondary" id="addGroupRoutineBtn">+ Add a routine</button>
+
+    <button class="btn-primary" id="saveGroupBtn">Save group</button>
+    <button class="btn-secondary btn-danger hidden" id="deleteGroupBtn">Delete group</button>
+  </div>
+</div>
+
+<!-- Group routine picker modal -->
+<div class="modal-backdrop hidden" id="groupRoutinePickerModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="groupRoutinePickerModal">✕</button></div>
+    <h2>Add a routine</h2>
+    <div class="picker-list" id="groupRoutinePickerList"></div>
+    <div id="groupRoutinePickerEmpty" class="empty-state hidden" style="padding:20px;">
+      <p>No routines yet — create one from the Home tab first.</p>
+    </div>
   </div>
 </div>
 
@@ -686,6 +748,7 @@
   var state = load();
   var currentView = "home";
   var editingRoutineDraft = null;
+  var editingGroupDraft = null;
   var editingActionId = null;
   var actionModalContext = null;
   var runState = null;
@@ -730,6 +793,7 @@
     return {
       actions: data.actions || [],
       routines: (data.routines || []).map(migrateRoutine),
+      groups: data.groups || [],
       settings: Object.assign({ sound: true }, data.settings || {})
     };
   }
@@ -778,7 +842,7 @@
     lastPushedAt = ts;
     setLocalMeta({ updatedAt: ts });
     db.collection("users").doc(auth.currentUser.uid).set({
-      actions: state.actions, routines: state.routines, settings: state.settings, updatedAt: ts
+      actions: state.actions, routines: state.routines, groups: state.groups, settings: state.settings, updatedAt: ts
     }).then(function () { showSyncError(null); }).catch(showSyncError);
   }
 
@@ -787,6 +851,7 @@
     state = {
       actions: cloud.actions || [],
       routines: (cloud.routines || []).map(migrateRoutine),
+      groups: cloud.groups || [],
       settings: Object.assign({ sound: true }, cloud.settings || {})
     };
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -1078,11 +1143,17 @@
     return null;
   }
 
+  function findGroup(id) {
+    for (var i = 0; i < state.groups.length; i++) if (state.groups[i].id === id) return state.groups[i];
+    return null;
+  }
+
   // ---------- Navigation ----------
   function setView(v) {
     currentView = v;
     document.getElementById("view-home").classList.toggle("hidden", v !== "home");
     document.getElementById("view-actions").classList.toggle("hidden", v !== "actions");
+    document.getElementById("view-groups").classList.toggle("hidden", v !== "groups");
     var navBtns = document.querySelectorAll(".nav-btn");
     for (var i = 0; i < navBtns.length; i++) {
       navBtns[i].classList.toggle("active", navBtns[i].getAttribute("data-view") === v);
@@ -1091,7 +1162,9 @@
   }
 
   function renderCurrentView() {
-    if (currentView === "home") renderHome(); else renderActions();
+    if (currentView === "home") renderHome();
+    else if (currentView === "groups") renderGroups();
+    else renderActions();
   }
 
   // ---------- Home / routines list ----------
@@ -1138,6 +1211,58 @@
     });
     el.querySelectorAll("[data-edit-routine]").forEach(function (btn) {
       btn.addEventListener("click", function () { openRoutineModal(btn.getAttribute("data-edit-routine")); });
+    });
+  }
+
+  // ---------- Groups list ----------
+  function renderGroups() {
+    var el = document.getElementById("groupsContent");
+    if (!state.groups.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">📦</div>' +
+        '<h3>No groups yet</h3>' +
+        '<p>Bundle routines you like to run together — like a full morning or a wind-down sequence — and run them one after another.</p>' +
+        '</div>';
+      return;
+    }
+    var html = '<div class="card-list">';
+    state.groups.forEach(function (g) {
+      var members = g.routineIds.map(findRoutine).filter(Boolean);
+      var runnable = members.filter(function (r) { return r.steps.length; });
+      var meta = members.length + (members.length === 1 ? " routine" : " routines");
+      html +=
+        '<div class="routine-card">' +
+          '<div class="emoji">' + g.icon + '</div>' +
+          '<div class="info"><h3>' + escapeHtml(g.name) + '</h3><div class="meta">' + meta + '</div></div>' +
+          '<div class="actions">' +
+            '<button class="ghost-btn" data-edit-group="' + g.id + '">✎</button>' +
+            '<button class="play-btn" data-run-group="' + g.id + '"' + (runnable.length ? '' : ' disabled style="opacity:0.35;"') + '>▶</button>' +
+          '</div>' +
+        '</div>';
+      if (members.length) {
+        html += '<div class="group-members">';
+        members.forEach(function (r) {
+          html +=
+            '<div class="group-member-row">' +
+              '<div class="emoji">' + r.icon + '</div>' +
+              '<div class="name">' + escapeHtml(r.name) + '</div>' +
+              '<button class="play-btn" data-play-routine="' + r.id + '"' + (r.steps.length ? '' : ' disabled style="opacity:0.35;"') + '>▶</button>' +
+            '</div>';
+        });
+        html += '</div>';
+      }
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-run-group]").forEach(function (btn) {
+      btn.addEventListener("click", function () { runGroupSequence(btn.getAttribute("data-run-group")); });
+    });
+    el.querySelectorAll("[data-edit-group]").forEach(function (btn) {
+      btn.addEventListener("click", function () { openGroupModal(btn.getAttribute("data-edit-group")); });
+    });
+    el.querySelectorAll("[data-play-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startRun(btn.getAttribute("data-play-routine")); });
     });
   }
 
@@ -1268,10 +1393,14 @@
   setupIconPicker("actionIconBtn", "actionIconPanel", "actionIconSearch", "actionEmojiPicker",
     function () { return actionPickedEmoji; },
     function (em) { actionPickedEmoji = em; document.getElementById("actionIconBtn").value = em; });
+  setupIconPicker("groupIconBtn", "groupIconPanel", "groupIconSearch", "groupEmojiPicker",
+    function () { return groupPickedEmoji; },
+    function (em) { groupPickedEmoji = em; document.getElementById("groupIconBtn").value = em; });
 
   // ---------- Action modal ----------
   var actionPickedEmoji = "🧴";
   var actionPickedKind = "check";
+  var groupPickedEmoji = "📦";
 
   function openActionModal(id) {
     editingActionId = id || null;
@@ -1630,9 +1759,135 @@
     if (!editingRoutineDraft.id) return;
     if (!confirm("Delete this routine?")) return;
     state.routines = state.routines.filter(function (r) { return r.id !== editingRoutineDraft.id; });
+    state.groups.forEach(function (g) { g.routineIds = g.routineIds.filter(function (id) { return id !== editingRoutineDraft.id; }); });
     save();
     closeModal("routineModal");
     renderHome();
+  });
+
+  // ---------- Group modal ----------
+  function openGroupModal(id) {
+    var g = id ? findGroup(id) : null;
+    editingGroupDraft = {
+      id: g ? g.id : null,
+      name: g ? g.name : "",
+      icon: g ? g.icon : "📦",
+      routineIds: g ? g.routineIds.slice() : []
+    };
+    document.getElementById("groupModalTitle").textContent = g ? "Edit group" : "New group";
+    document.getElementById("groupName").value = editingGroupDraft.name;
+    groupPickedEmoji = editingGroupDraft.icon;
+    document.getElementById("groupIconBtn").value = groupPickedEmoji;
+    document.getElementById("groupIconPanel").classList.add("hidden");
+    document.getElementById("deleteGroupBtn").classList.toggle("hidden", !g);
+
+    renderGroupRoutineList();
+    openModal("groupModal");
+  }
+
+  function renderGroupRoutineList() {
+    var valid = editingGroupDraft.routineIds.filter(function (id) { return !!findRoutine(id); });
+    if (valid.length !== editingGroupDraft.routineIds.length) editingGroupDraft.routineIds = valid;
+
+    var el = document.getElementById("groupRoutineList");
+    if (!editingGroupDraft.routineIds.length) {
+      el.innerHTML = '<div class="empty-state" style="padding:16px;"><p style="margin:0;">No routines yet — add one below.</p></div>';
+      return;
+    }
+    var html = "";
+    editingGroupDraft.routineIds.forEach(function (id, idx) {
+      var r = findRoutine(id);
+      html +=
+        '<div class="step-item">' +
+          '<div class="num">' + (idx + 1) + '</div>' +
+          '<div class="emoji">' + r.icon + '</div>' +
+          '<div class="name">' + escapeHtml(r.name) + '</div>' +
+          '<div class="step-actions">' +
+            (idx > 0 ? '<button data-move-routine="' + idx + ':up">↑</button>' : '<button disabled style="opacity:0.25;">↑</button>') +
+            (idx < editingGroupDraft.routineIds.length - 1 ? '<button data-move-routine="' + idx + ':down">↓</button>' : '<button disabled style="opacity:0.25;">↓</button>') +
+            '<button data-remove-routine="' + idx + '">✕</button>' +
+          '</div>' +
+        '</div>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll("[data-move-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var parts = btn.getAttribute("data-move-routine").split(":");
+        var i = parseInt(parts[0], 10);
+        var dir = parts[1] === "up" ? -1 : 1;
+        var j = i + dir;
+        var ids = editingGroupDraft.routineIds;
+        var tmp = ids[i]; ids[i] = ids[j]; ids[j] = tmp;
+        renderGroupRoutineList();
+      });
+    });
+    el.querySelectorAll("[data-remove-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var i = parseInt(btn.getAttribute("data-remove-routine"), 10);
+        editingGroupDraft.routineIds.splice(i, 1);
+        renderGroupRoutineList();
+      });
+    });
+  }
+
+  document.getElementById("addGroupRoutineBtn").addEventListener("click", function () {
+    renderGroupRoutinePicker();
+    closeModal("groupModal");
+    openModal("groupRoutinePickerModal");
+  });
+
+  function renderGroupRoutinePicker() {
+    var el = document.getElementById("groupRoutinePickerList");
+    var emptyEl = document.getElementById("groupRoutinePickerEmpty");
+    var available = state.routines.filter(function (r) { return editingGroupDraft.routineIds.indexOf(r.id) === -1; });
+    if (!available.length) {
+      el.innerHTML = "";
+      emptyEl.classList.remove("hidden");
+      return;
+    }
+    emptyEl.classList.add("hidden");
+    var html = "";
+    available.forEach(function (r) {
+      html +=
+        '<button type="button" class="picker-row" data-pick-routine="' + r.id + '">' +
+          '<div class="emoji">' + r.icon + '</div>' +
+          '<div class="name">' + escapeHtml(r.name) + '</div>' +
+        '</button>';
+    });
+    el.innerHTML = html;
+    el.querySelectorAll("[data-pick-routine]").forEach(function (row) {
+      row.addEventListener("click", function () {
+        editingGroupDraft.routineIds.push(row.getAttribute("data-pick-routine"));
+        closeModal("groupRoutinePickerModal");
+        renderGroupRoutineList();
+        openModal("groupModal");
+      });
+    });
+  }
+
+  document.getElementById("saveGroupBtn").addEventListener("click", function () {
+    var name = document.getElementById("groupName").value.trim();
+    if (!name) { document.getElementById("groupName").focus(); return; }
+    groupPickedEmoji = groupPickedEmoji.trim() || "📦";
+    var idsOut = editingGroupDraft.routineIds.slice();
+    if (editingGroupDraft.id) {
+      var g = findGroup(editingGroupDraft.id);
+      g.name = name; g.icon = groupPickedEmoji; g.routineIds = idsOut;
+    } else {
+      state.groups.push({ id: uid(), name: name, icon: groupPickedEmoji, routineIds: idsOut });
+    }
+    save();
+    closeModal("groupModal");
+    renderGroups();
+  });
+
+  document.getElementById("deleteGroupBtn").addEventListener("click", function () {
+    if (!editingGroupDraft.id) return;
+    if (!confirm("Delete this group? Its routines won't be affected.")) return;
+    state.groups = state.groups.filter(function (g) { return g.id !== editingGroupDraft.id; });
+    save();
+    closeModal("groupModal");
+    renderGroups();
   });
 
   // ---------- Settings ----------
@@ -1646,7 +1901,7 @@
   });
   document.getElementById("resetDataBtn").addEventListener("click", function () {
     if (!confirm("This will permanently erase all your routines and actions. Continue?")) return;
-    state.actions = []; state.routines = [];
+    state.actions = []; state.routines = []; state.groups = [];
     save();
     closeModal("settingsModal");
     renderCurrentView();
@@ -1658,6 +1913,7 @@
   });
   document.getElementById("fabBtn").addEventListener("click", function () {
     if (currentView === "home") openRoutineModal(null);
+    else if (currentView === "groups") openGroupModal(null);
     else { actionModalContext = "library"; openActionModal(null); }
   });
 
@@ -1676,13 +1932,24 @@
     } catch (e) {}
   }
 
-  function startRun(routineId) {
+  function startRun(routineId, queue, seqIndex, seqTotal) {
     var r = findRoutine(routineId);
     if (!r || !r.steps.length) return;
-    runState = { routineId: routineId, index: 0, running: false, remaining: 0, endsAt: null, finished: false };
+    runState = {
+      routineId: routineId, index: 0, running: false, remaining: 0, endsAt: null, finished: false,
+      queue: queue || null, seqIndex: seqIndex || null, seqTotal: seqTotal || null
+    };
     prepStep();
     document.getElementById("runOverlay").classList.remove("hidden");
     renderRun();
+  }
+
+  function runGroupSequence(groupId) {
+    var g = findGroup(groupId);
+    if (!g) return;
+    var ids = g.routineIds.filter(function (id) { var r = findRoutine(id); return r && r.steps.length; });
+    if (!ids.length) return;
+    startRun(ids[0], ids.slice(1), 1, ids.length);
   }
 
   function currentRoutine() { return findRoutine(runState.routineId); }
@@ -1703,7 +1970,7 @@
 
   function renderRun() {
     var r = currentRoutine();
-    document.getElementById("runTitle").textContent = r.icon + " " + r.name;
+    document.getElementById("runTitle").textContent = r.icon + " " + r.name + (runState.seqTotal ? " · " + runState.seqIndex + "/" + runState.seqTotal : "");
 
     var dotsEl = document.getElementById("runDots");
     dotsEl.innerHTML = "";
@@ -1722,8 +1989,18 @@
         '<div class="run-complete"><div class="big">🎉</div>' +
         '<h2 class="run-name">Routine complete</h2>' +
         '<p style="opacity:0.85;">' + escapeHtml(r.name) + ' — nice work.</p></div>';
-      bottomEl.innerHTML = '<button class="btn-next" id="runDoneBtn" style="border-radius:14px;">Done</button>';
-      document.getElementById("runDoneBtn").addEventListener("click", closeRun);
+      if (runState.queue && runState.queue.length) {
+        var nextR = findRoutine(runState.queue[0]);
+        bottomEl.innerHTML = '<button class="btn-next" id="runNextRoutineBtn" style="border-radius:14px;">Next: ' + nextR.icon + ' ' + escapeHtml(nextR.name) + ' →</button>';
+        document.getElementById("runNextRoutineBtn").addEventListener("click", function () {
+          var nextId = runState.queue[0];
+          var restQueue = runState.queue.slice(1);
+          startRun(nextId, restQueue, runState.seqIndex + 1, runState.seqTotal);
+        });
+      } else {
+        bottomEl.innerHTML = '<button class="btn-next" id="runDoneBtn" style="border-radius:14px;">Done</button>';
+        document.getElementById("runDoneBtn").addEventListener("click", closeRun);
+      }
       return;
     }
 
@@ -1827,6 +2104,8 @@
       renderRun();
     } else {
       runState.finished = true;
+      r.lastCompletedAt = Date.now();
+      save();
       renderRun();
     }
   }
@@ -1842,13 +2121,9 @@
 
   function closeRun() {
     pauseTicker();
-    if (runState && runState.finished) {
-      var r = findRoutine(runState.routineId);
-      if (r) { r.lastCompletedAt = Date.now(); save(); }
-    }
     runState = null;
     document.getElementById("runOverlay").classList.add("hidden");
-    renderHome();
+    renderCurrentView();
   }
 
   document.getElementById("runCloseBtn").addEventListener("click", function () {
