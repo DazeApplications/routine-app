@@ -658,6 +658,14 @@
   var syncEnabled = !!(window.FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey.indexOf("YOUR_") !== 0);
   var auth = null, db = null, unsubscribeDoc = null, cloudPushTimer = null, lastPushedAt = 0, applyingRemote = false;
 
+  function showSyncError(err) {
+    var el = document.getElementById("syncError");
+    if (!el) return;
+    if (!err) { el.classList.add("hidden"); el.textContent = ""; return; }
+    el.textContent = "Sync error: " + (err.code || err.message || err);
+    el.classList.remove("hidden");
+  }
+
   function getLocalMeta() {
     try { return JSON.parse(localStorage.getItem(META_KEY)) || { updatedAt: 0 }; } catch (e) { return { updatedAt: 0 }; }
   }
@@ -682,7 +690,7 @@
     setLocalMeta({ updatedAt: ts });
     db.collection("users").doc(auth.currentUser.uid).set({
       actions: state.actions, routines: state.routines, settings: state.settings, updatedAt: ts
-    }).catch(function () {});
+    }).then(function () { showSyncError(null); }).catch(showSyncError);
   }
 
   function applyRemote(cloud) {
@@ -707,7 +715,7 @@
       if (cloudUpdatedAt === lastPushedAt) return;
       if (cloudUpdatedAt === getLocalMeta().updatedAt) return;
       applyRemote(cloud);
-    });
+    }, showSyncError);
   }
 
   function reconcileOnSignIn(userUid) {
@@ -741,7 +749,7 @@
         pushToCloud();
       }
       startListeningToCloud(userUid);
-    }).catch(function () {});
+    }).catch(showSyncError);
   }
 
   function updateSyncUI(user) {
@@ -769,13 +777,6 @@
     } catch (e) { syncEnabled = false; return; }
 
     document.getElementById("syncField").classList.remove("hidden");
-
-    function showSyncError(err) {
-      var el = document.getElementById("syncError");
-      if (!err) { el.classList.add("hidden"); el.textContent = ""; return; }
-      el.textContent = "Sign-in failed: " + (err.code || err.message || err);
-      el.classList.remove("hidden");
-    }
 
     document.getElementById("signOutBtn").addEventListener("click", function () {
       if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }

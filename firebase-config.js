@@ -14,6 +14,12 @@
 //      then paste the rules from firestore.rules into the Rules tab and Publish.
 //   5. Authentication > Settings > Authorized domains > add the domain the app
 //      is served from (e.g. dazeapplications.github.io).
+//   6. https://console.cloud.google.com/apis/credentials (same project) >
+//      open the "Web client" OAuth client Firebase created in step 3 >
+//      Authorized JavaScript origins > add "https://<your-domain>" (exact
+//      origin, e.g. https://dazeapplications.github.io, no trailing slash).
+//      This is separate from step 5 and easy to miss — without it, Google
+//      sign-in fails with no visible error.
 //
 // Until this is filled in with real values, sync stays hidden in Settings and
 // the app works exactly as before, storing data on-device only.
