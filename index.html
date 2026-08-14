@@ -556,7 +556,7 @@
     <div class="field hidden" id="syncField">
       <label>Sync across devices</label>
       <div id="syncSignedOut">
-        <button class="btn-secondary" id="signInBtn">Sign in with Google</button>
+        <div id="googleSignInBtn"></div>
       </div>
       <div class="hidden" id="syncSignedIn">
         <div id="syncAccountRow" style="font-size:14px;color:var(--ink-soft);margin-bottom:8px;"></div>
@@ -583,6 +583,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <script src="firebase-config.js"></script>
 <script>
 (function () {
@@ -776,30 +777,35 @@
       el.classList.remove("hidden");
     }
 
-    var REDIRECT_FLAG = "routineapp.signinRedirectPending";
-
-    document.getElementById("signInBtn").addEventListener("click", function () {
-      showSyncError(null);
-      var provider = new firebase.auth.GoogleAuthProvider();
-      try { sessionStorage.setItem(REDIRECT_FLAG, "1"); } catch (e) {}
-      auth.signInWithRedirect(provider).catch(function (err) {
-        try { sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) {}
-        showSyncError(err);
-      });
-    });
     document.getElementById("signOutBtn").addEventListener("click", function () {
       if (unsubscribeDoc) { unsubscribeDoc(); unsubscribeDoc = null; }
+      if (window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect();
       auth.signOut();
     });
 
-    var wasRedirectPending = false;
-    try { wasRedirectPending = sessionStorage.getItem(REDIRECT_FLAG) === "1"; sessionStorage.removeItem(REDIRECT_FLAG); } catch (e) {}
-
-    auth.getRedirectResult().then(function (result) {
-      if (wasRedirectPending && !(result && result.user)) {
-        showSyncError({ message: "Google sign-in didn't come back with an account. This usually means Chrome is blocking third-party storage access needed for the sign-in redirect — check Settings > Privacy and security > Third-party cookies isn't set to Block, or try a different browser." });
+    // Uses Google Identity Services (FedCM) for sign-in instead of Firebase's
+    // signInWithRedirect/signInWithPopup — those rely on a cross-domain hop
+    // through the Firebase authDomain that Chrome's third-party storage
+    // blocking can silently break, with no error to catch.
+    if (window.google && google.accounts && google.accounts.id && typeof GOOGLE_CLIENT_ID === "string" && GOOGLE_CLIENT_ID.indexOf("YOUR_") !== 0) {
+      try {
+        google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: function (response) {
+            showSyncError(null);
+            var credential = firebase.auth.GoogleAuthProvider.credential(response.credential);
+            auth.signInWithCredential(credential).catch(showSyncError);
+          }
+        });
+        google.accounts.id.renderButton(document.getElementById("googleSignInBtn"), {
+          type: "standard", theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 280
+        });
+      } catch (e) {
+        showSyncError({ message: "Google Sign-In failed to load. Check your connection and try again." });
       }
-    }).catch(showSyncError);
+    } else {
+      showSyncError({ message: "Google Sign-In library didn't load. Check your connection and try again." });
+    }
 
     var reconciled = false;
     auth.onAuthStateChanged(function (user) {

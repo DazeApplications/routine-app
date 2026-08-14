@@ -26,3 +26,9 @@ var FIREBASE_CONFIG = {
   messagingSenderId: "373513178553",
   appId: "1:373513178553:web:ed543d0cd0a4ebba92ba68"
 };
+
+// Web client ID from Authentication > Sign-in method > Google > Web SDK
+// configuration. Used for a direct FedCM-based Google sign-in, which avoids
+// the cross-domain redirect hop that Chrome's third-party storage blocking
+// can silently break.
+var GOOGLE_CLIENT_ID = "373513178553-0jgu3kjcvt5rkia8q556fg3gq245jt0e.apps.googleusercontent.com";
