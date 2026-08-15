@@ -538,6 +538,14 @@
       <button type="button" class="btn-secondary" id="weatherLocationBtn" style="margin-top:0;">Use my location</button>
     </div>
 
+    <div class="section-label" style="margin-top:20px;">History</div>
+    <div class="field">
+      <label style="display:flex;align-items:center;justify-content:space-between;text-transform:none;font-size:14px;color:var(--ink);">
+        Save a record each time this routine is run
+        <input type="checkbox" id="routineSaveHistory" style="width:auto;">
+      </label>
+    </div>
+
     <div class="section-label" style="margin-top:20px;">Steps</div>
     <div class="step-list" id="routineStepList"></div>
     <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
@@ -859,6 +867,8 @@
     }
     if (r.lastCompletedAt === undefined) r.lastCompletedAt = null;
     if (r.createdAt === undefined) r.createdAt = Date.now();
+    if (r.saveHistory === undefined) r.saveHistory = false;
+    if (!r.history) r.history = [];
     return r;
   }
 
@@ -1692,12 +1702,14 @@
       name: r ? r.name : "",
       icon: r ? r.icon : "🗓️",
       steps: r ? r.steps.map(function (s) { return { stepId: uid(), actionId: s.actionId }; }) : [],
+      saveHistory: r ? !!r.saveHistory : false,
       trigger: Object.assign({}, TRIGGER_DEFAULTS, r ? r.trigger : {}, {
         days: ((r && r.trigger && r.trigger.days) || TRIGGER_DEFAULTS.days).slice()
       })
     };
     document.getElementById("routineModalTitle").textContent = r ? "Edit routine" : "New routine";
     document.getElementById("routineName").value = editingRoutineDraft.name;
+    document.getElementById("routineSaveHistory").checked = editingRoutineDraft.saveHistory;
     routinePickedEmoji = editingRoutineDraft.icon;
     setIconBtnDisplay(document.getElementById("routineIconBtn"), routinePickedEmoji);
     document.getElementById("routineIconPanel").classList.add("hidden");
@@ -1942,13 +1954,14 @@
     }
     var stepsOut = editingRoutineDraft.steps.map(function (s) { return { actionId: s.actionId }; });
     var triggerOut = Object.assign({}, trig, { days: trig.days.slice() });
+    var saveHistory = document.getElementById("routineSaveHistory").checked;
     if (editingRoutineDraft.id) {
       var r = findRoutine(editingRoutineDraft.id);
-      r.name = name; r.icon = routinePickedEmoji; r.steps = stepsOut; r.trigger = triggerOut;
+      r.name = name; r.icon = routinePickedEmoji; r.steps = stepsOut; r.trigger = triggerOut; r.saveHistory = saveHistory;
     } else {
       state.routines.push({
         id: uid(), name: name, icon: routinePickedEmoji, steps: stepsOut, trigger: triggerOut,
-        lastCompletedAt: null, createdAt: Date.now()
+        lastCompletedAt: null, createdAt: Date.now(), saveHistory: saveHistory, history: []
       });
     }
     save();
@@ -2138,7 +2151,8 @@
     if (!r || !r.steps.length) return;
     runState = {
       routineId: routineId, index: 0, running: false, remaining: 0, endsAt: null, finished: false,
-      queue: queue || null, seqIndex: seqIndex || null, seqTotal: seqTotal || null
+      queue: queue || null, seqIndex: seqIndex || null, seqTotal: seqTotal || null,
+      startedAt: Date.now(), stepStartedAt: null, stepLog: []
     };
     prepStep();
     document.getElementById("runOverlay").classList.remove("hidden");
@@ -2162,11 +2176,38 @@
 
   function prepStep() {
     var cs = currentStep();
+    runState.stepStartedAt = Date.now();
     if (cs.action && cs.action.kind === "timer") {
       runState.remaining = cs.action.duration;
       runState.running = false;
       runState.endsAt = null;
     }
+  }
+
+  function logCurrentStep() {
+    var cs = currentStep();
+    if (!cs.action) return;
+    var actualDuration = Math.max(0, Math.round((Date.now() - runState.stepStartedAt) / 1000));
+    runState.stepLog[runState.index] = {
+      actionId: cs.action.id,
+      name: cs.action.name,
+      icon: cs.action.icon,
+      kind: cs.action.kind,
+      plannedDuration: cs.action.kind === "timer" ? cs.action.duration : null,
+      actualDuration: actualDuration,
+      product: cs.action.product ? Object.assign({}, cs.action.product) : null
+    };
+  }
+
+  function recordRunHistory(r) {
+    if (!r.saveHistory) return;
+    if (!r.history) r.history = [];
+    r.history.push({
+      id: uid(),
+      startedAt: runState.startedAt,
+      finishedAt: Date.now(),
+      steps: runState.stepLog.filter(function (s) { return s; })
+    });
   }
 
   function renderRun() {
@@ -2308,6 +2349,7 @@
   function advanceStep() {
     pauseTicker();
     var r = currentRoutine();
+    logCurrentStep();
     if (runState.index < r.steps.length - 1) {
       runState.index++;
       prepStep();
@@ -2315,6 +2357,7 @@
     } else {
       runState.finished = true;
       r.lastCompletedAt = Date.now();
+      recordRunHistory(r);
       save();
       renderRun();
     }
