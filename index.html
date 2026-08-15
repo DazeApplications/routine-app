@@ -491,8 +491,12 @@
 
   <header class="app-header">
     <h1><span class="header-icon" id="headerIcon">🏠</span><span id="headerTitle">Routines</span></h1>
-    <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+    <div style="display:flex; gap:8px;">
+      <button class="icon-btn" id="importBtn" title="Import from a file">📥</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+    </div>
   </header>
+  <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
 
   <main>
     <section id="view-home" class="view">
@@ -579,7 +583,7 @@
         <option value="monthly">Day of month</option>
         <option value="interval">Regular interval</option>
         <option value="sun">Sunrise / sunset</option>
-        <option value="weather">Weather hits x°</option>
+        <option value="weather">Temperature</option>
       </select>
     </div>
 
@@ -829,6 +833,11 @@
         <button class="btn-secondary" id="signOutBtn">Sign out</button>
       </div>
       <div class="hidden" id="syncError" style="font-size:13px;color:var(--danger);margin-top:8px;"></div>
+    </div>
+    <div class="field">
+      <label>Backup</label>
+      <p style="font-size:12.5px;color:var(--ink-soft);margin:0 0 8px;line-height:1.4;">Save everything — routines, groups, and actions — to a file. Use it to move to a new device, or to restore after erasing data below.</p>
+      <button class="btn-secondary" id="exportBackupBtn">Export a backup</button>
     </div>
     <button class="btn-secondary btn-danger" id="resetDataBtn">Erase all routines &amp; actions</button>
   </div>
@@ -1169,6 +1178,186 @@
         done();
       }
     }).catch(showSyncError);
+  }
+
+  // ---------- Import / export ----------
+  // Two uses share this same file format: sending one routine or group to
+  // someone else, and backing up (or restoring, or moving to a new device)
+  // everything at once. Either way it's a plain JSON file — exporting
+  // writes it out (via the native share sheet where available, e.g.
+  // straight into a chat app, or a plain download otherwise); importing
+  // reads it back in. No account or network round-trip is involved, so it
+  // works independently of (and without needing) cloud sync.
+  var EXPORT_FILE_VERSION = 1;
+  var EXPORT_FORMAT = "routines-export";
+
+  function uniqueStrings(arr) {
+    var seen = {}, out = [];
+    arr.forEach(function (s) { if (!seen[s]) { seen[s] = true; out.push(s); } });
+    return out;
+  }
+
+  // Sun/weather triggers carry a saved lat/lon — that's the exporting
+  // device's home location, so a routine/group sent to someone else has it
+  // stripped (reset to "off") rather than handed along. A full backup keeps
+  // it, since it's restored on the same person's own devices.
+  function stripLocationTrigger(t) {
+    if (t && (t.type === "sun" || t.type === "weather")) return Object.assign({}, TRIGGER_DEFAULTS);
+    return Object.assign({}, TRIGGER_DEFAULTS, t, { days: ((t && t.days) || TRIGGER_DEFAULTS.days).slice() });
+  }
+
+  function exportableAction(a) {
+    return { id: a.id, name: a.name, icon: a.icon, kind: a.kind, duration: a.duration || 0, product: a.product || null };
+  }
+  function exportableRoutine(r) {
+    return {
+      id: r.id, name: r.name, icon: r.icon,
+      steps: r.steps.map(function (s) { return { actionId: s.actionId }; }),
+      trigger: stripLocationTrigger(r.trigger)
+    };
+  }
+
+  function buildRoutineExport(routineId) {
+    var r = findRoutine(routineId);
+    var actions = uniqueStrings(r.steps.map(function (s) { return s.actionId; })).map(findAction).filter(Boolean);
+    return {
+      app: EXPORT_FORMAT, version: EXPORT_FILE_VERSION, type: "routine",
+      name: r.name, icon: r.icon,
+      routine: exportableRoutine(r), actions: actions.map(exportableAction)
+    };
+  }
+
+  function buildGroupExport(groupId) {
+    var g = findGroup(groupId);
+    var routines = g.routineIds.map(findRoutine).filter(Boolean);
+    var actionIds = [];
+    routines.forEach(function (r) { r.steps.forEach(function (s) { actionIds.push(s.actionId); }); });
+    var actions = uniqueStrings(actionIds).map(findAction).filter(Boolean);
+    return {
+      app: EXPORT_FORMAT, version: EXPORT_FILE_VERSION, type: "group",
+      name: g.name, icon: g.icon,
+      group: { name: g.name, icon: g.icon, routineIds: routines.map(function (r) { return r.id; }) },
+      routines: routines.map(exportableRoutine), actions: actions.map(exportableAction)
+    };
+  }
+
+  // A full backup keeps everything as-is (ids, triggers, history, settings)
+  // since restoring it replaces local state wholesale rather than merging.
+  function buildBackupExport() {
+    return {
+      app: EXPORT_FORMAT, version: EXPORT_FILE_VERSION, type: "backup",
+      exportedAt: Date.now(),
+      actions: state.actions, routines: state.routines, groups: state.groups, settings: state.settings
+    };
+  }
+
+  function slugify(name) {
+    return (name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  // Prefers the native share sheet (nice on mobile — share straight into a
+  // chat app) and falls back to a plain file download everywhere else.
+  function deliverJsonFile(json, filename, shareTitle) {
+    if (navigator.share) {
+      try {
+        var file = new File([json], filename, { type: "application/json" });
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: shareTitle }).catch(function () {});
+          return;
+        }
+      } catch (e) {}
+    }
+    var url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function exportItem(type, id) {
+    var data = type === "routine" ? buildRoutineExport(id) : buildGroupExport(id);
+    if (!data) return;
+    var filename = (type === "routine" ? "routine-" : "group-") + (slugify(data.name) || type) + ".json";
+    deliverJsonFile(JSON.stringify(data, null, 2), filename, data.name);
+  }
+
+  function exportBackup() {
+    var data = buildBackupExport();
+    var filename = "routines-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+    deliverJsonFile(JSON.stringify(data, null, 2), filename, "Routines backup");
+  }
+
+  function importActions(list) {
+    var idMap = {};
+    (list || []).forEach(function (a) {
+      var newId = uid();
+      idMap[a.id] = newId;
+      state.actions.push({ id: newId, name: a.name, icon: a.icon, kind: a.kind, duration: a.duration || 0, product: a.product || null });
+    });
+    return idMap;
+  }
+
+  function importRoutine(rp, actionIdMap) {
+    var newId = uid();
+    state.routines.push({
+      id: newId, name: rp.name, icon: rp.icon,
+      steps: rp.steps.map(function (s) { return { actionId: actionIdMap[s.actionId] }; }).filter(function (s) { return !!s.actionId; }),
+      trigger: stripLocationTrigger(rp.trigger),
+      lastCompletedAt: null, createdAt: Date.now(), saveHistory: false, history: []
+    });
+    return newId;
+  }
+
+  function importFileData(data) {
+    if (data.type === "backup") {
+      state.actions = (data.actions || []).map(exportableAction);
+      state.groups = (data.groups || []).map(function (g) { return { id: g.id, name: g.name, icon: g.icon, routineIds: (g.routineIds || []).slice() }; });
+      state.routines = (data.routines || []).map(function (r) {
+        return migrateRoutine(Object.assign({}, r, { trigger: Object.assign({}, TRIGGER_DEFAULTS, r.trigger, { days: ((r.trigger && r.trigger.days) || TRIGGER_DEFAULTS.days).slice() }) }));
+      });
+      state.settings = Object.assign({ sound: true }, data.settings || {});
+    } else {
+      var actionIdMap = importActions(data.actions);
+      if (data.type === "routine") {
+        importRoutine(data.routine, actionIdMap);
+      } else if (data.type === "group") {
+        var routineIdMap = {};
+        (data.routines || []).forEach(function (rp) { routineIdMap[rp.id] = importRoutine(rp, actionIdMap); });
+        state.groups.push({
+          id: uid(), name: data.group.name, icon: data.group.icon,
+          routineIds: data.group.routineIds.map(function (id) { return routineIdMap[id]; }).filter(Boolean)
+        });
+      }
+    }
+    save();
+    renderCurrentView();
+  }
+
+  function importFromFile(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data;
+      try { data = JSON.parse(reader.result); } catch (e) { data = null; }
+      if (!data || data.app !== EXPORT_FORMAT || ["routine", "group", "backup"].indexOf(data.type) === -1) {
+        alert("That doesn't look like a Routines file.");
+        return;
+      }
+      var label;
+      if (data.type === "backup") {
+        var counts = (data.routines || []).length + " routines, " + (data.groups || []).length + " groups, " + (data.actions || []).length + " actions";
+        label = "Restore this backup (" + counts + ")? This replaces everything currently on this device.";
+      } else if (data.type === "group") {
+        var routineCount = (data.routines || []).length;
+        label = "Import group “" + data.name + "” (" + routineCount + (routineCount === 1 ? " routine" : " routines") + ")?";
+      } else {
+        label = "Import routine “" + data.name + "”?";
+      }
+      if (!confirm(label)) return;
+      importFileData(data);
+      alert(data.type === "backup" ? "Backup restored." : "Imported “" + data.name + "”.");
+    };
+    reader.onerror = function () { alert("Couldn't read that file."); };
+    reader.readAsText(file);
   }
 
   function updateSyncUI(user) {
@@ -1541,6 +1730,7 @@
           '<div class="emoji">' + iconHtml(r.icon) + '</div>' +
           '<div class="info"><h3>' + escapeHtml(r.name) + (due ? ' <span class="due-badge">Due now</span>' : '') + '</h3><div class="meta">' + meta + '</div></div>' +
           '<div class="actions">' +
+            '<button class="ghost-btn" data-export-routine="' + r.id + '" title="Export">📤</button>' +
             '<button class="ghost-btn" data-edit-routine="' + r.id + '">✎</button>' +
             '<button class="play-btn" data-play-routine="' + r.id + '">▶</button>' +
           '</div>' +
@@ -1554,6 +1744,9 @@
     });
     el.querySelectorAll("[data-edit-routine]").forEach(function (btn) {
       btn.addEventListener("click", function () { openRoutineModal(btn.getAttribute("data-edit-routine")); });
+    });
+    el.querySelectorAll("[data-export-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { exportItem("routine", btn.getAttribute("data-export-routine")); });
     });
   }
 
@@ -1578,6 +1771,7 @@
           '<div class="emoji">' + iconHtml(g.icon) + '</div>' +
           '<div class="info"><h3>' + escapeHtml(g.name) + '</h3><div class="meta">' + meta + '</div></div>' +
           '<div class="actions">' +
+            '<button class="ghost-btn" data-export-group="' + g.id + '" title="Export">📤</button>' +
             '<button class="ghost-btn" data-edit-group="' + g.id + '">✎</button>' +
             '<button class="play-btn" data-run-group="' + g.id + '"' + (runnable.length ? '' : ' disabled style="opacity:0.35;"') + '>▶</button>' +
           '</div>' +
@@ -1603,6 +1797,9 @@
     });
     el.querySelectorAll("[data-edit-group]").forEach(function (btn) {
       btn.addEventListener("click", function () { openGroupModal(btn.getAttribute("data-edit-group")); });
+    });
+    el.querySelectorAll("[data-export-group]").forEach(function (btn) {
+      btn.addEventListener("click", function () { exportItem("group", btn.getAttribute("data-export-group")); });
     });
     el.querySelectorAll("[data-play-routine]").forEach(function (btn) {
       btn.addEventListener("click", function () { startRun(btn.getAttribute("data-play-routine")); });
@@ -2451,6 +2648,16 @@
     renderGroups();
   });
 
+  // ---------- Import ----------
+  document.getElementById("importBtn").addEventListener("click", function () {
+    document.getElementById("importFile").click();
+  });
+  document.getElementById("importFile").addEventListener("change", function () {
+    var file = this.files && this.files[0];
+    this.value = "";
+    if (file) importFromFile(file);
+  });
+
   // ---------- Settings ----------
   document.getElementById("settingsBtn").addEventListener("click", function () {
     document.getElementById("soundToggle").checked = !!state.settings.sound;
@@ -2460,6 +2667,7 @@
     state.settings.sound = e.target.checked;
     save();
   });
+  document.getElementById("exportBackupBtn").addEventListener("click", exportBackup);
   document.getElementById("resetDataBtn").addEventListener("click", function () {
     if (!confirm("This will permanently erase all your routines and actions. Continue?")) return;
     state.actions = []; state.routines = []; state.groups = [];

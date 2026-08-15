@@ -17,6 +17,13 @@ Data lives in `localStorage` by default (on-device only). Signing in with Google
 
 Sync uses last-write-wins on the whole dataset: whichever device saved most recently wins. If a device has unsynced local data when you first sign in there and the account already has different synced data, you'll be asked which one to keep.
 
+## Import & export
+
+Everything moves around as a `.json` file, either through the device's native share sheet (e.g. straight into a chat app) or as a download — no account or sign-in needed, and independent of cloud sync.
+
+- **Send someone a routine or group** — tap the 📤 button on it (Routines or Groups tab); it bundles in every action it uses. They open the file with the 📥 button next to Settings to add it as their own copy. It's a one-time copy, not a live link, so edits made afterwards on either side don't carry over.
+- **Back up everything** — in Settings, "Export a backup" saves all your routines, groups, and actions to one file. Import it the same way (📥) to restore it — on the same device after erasing data, or on a new one — which replaces whatever's currently there.
+
 ## Running locally
 
 The app is static HTML/CSS/JS with no build step. Serve the folder with any static file server, for example:
