@@ -9,6 +9,7 @@ A single-page app for building routines out of custom actions — like a skincar
 - **Triggers** — start a routine by tapping ▶, or pick one automatic trigger per routine: **Day of week** or **Day of month** at a set time, a **regular interval** (every N hours/days since it was last completed), **sunrise/sunset** (with an optional offset, computed locally from a saved location — no network needed), or **weather** (above/below a target temperature, fetched from the keyless Open-Meteo API for a saved location). Any of these give the routine a "Due now" badge once triggered, but only while the app is open — there's no background alarm.
 - **Run mode** — a full-screen, step-by-step view that walks through a routine: a countdown ring for timed steps, a "mark done" button for the rest, and previous/skip controls throughout.
 - **Settings** — toggle the completion sound, sign in with Google to sync across devices, or erase all data.
+- **Linked products** — attach a product page link, product name, brand, and directions of use to any action; they show up during Run mode for that step.
 
 ## Cross-device sync
 
