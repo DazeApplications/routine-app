@@ -74,12 +74,13 @@
     font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--ink-soft); margin: 18px 0 10px;
   }
-  .section-label-row {
-    display: flex; align-items: center; justify-content: space-between;
+  .choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .choice-card {
+    width: 100%; border: 1px solid var(--line); cursor: pointer; text-align: left; font: inherit;
   }
-  .section-label-row .ghost-btn {
-    width: 26px; height: 26px; font-size: 13px;
-  }
+  .choice-card:hover { border-color: var(--violet); }
+  .choice-card .info h3 { margin: 0; }
+  .choice-card .info .meta { white-space: normal; }
 
   .empty-state {
     text-align: center; padding: 48px 20px; color: var(--ink-soft);
@@ -482,7 +483,7 @@
     <section id="view-routines" class="view hidden">
       <div class="section-label">Routines</div>
       <div id="routinesListContent"></div>
-      <div class="section-label section-label-row">Actions<button class="ghost-btn" id="addActionInlineBtn" title="Add action">+</button></div>
+      <div class="section-label" style="margin-top:20px;">Actions</div>
       <div id="actionsContent"></div>
     </section>
 
@@ -509,6 +510,24 @@
   </main>
 
   <button class="fab" id="fabBtn" title="Add">+</button>
+</div>
+
+<!-- Add-choice modal (routine vs action) -->
+<div class="modal-backdrop hidden" id="addChoiceModal">
+  <div class="modal">
+    <div class="modal-close-row"><button class="icon-btn" data-close="addChoiceModal">✕</button></div>
+    <h2>What do you want to add?</h2>
+    <div class="choice-list">
+      <button class="routine-card choice-card" id="addChoiceRoutineBtn">
+        <div class="emoji">🗓️</div>
+        <div class="info"><h3>New routine</h3><div class="meta">A sequence of steps you run, like a morning skincare routine.</div></div>
+      </button>
+      <button class="routine-card choice-card" id="addChoiceActionBtn">
+        <div class="emoji">🧩</div>
+        <div class="info"><h3>New action</h3><div class="meta">A single building-block step, like "Splash face with water."</div></div>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- Routine editor modal -->
@@ -2413,10 +2432,15 @@
     btn.addEventListener("click", function () { setView(btn.getAttribute("data-view")); });
   });
   document.getElementById("fabBtn").addEventListener("click", function () {
-    if (currentView === "routines") openRoutineModal(null);
+    if (currentView === "routines") openModal("addChoiceModal");
     else if (currentView === "groups") openGroupModal(null);
   });
-  document.getElementById("addActionInlineBtn").addEventListener("click", function () {
+  document.getElementById("addChoiceRoutineBtn").addEventListener("click", function () {
+    closeModal("addChoiceModal");
+    openRoutineModal(null);
+  });
+  document.getElementById("addChoiceActionBtn").addEventListener("click", function () {
+    closeModal("addChoiceModal");
     actionModalContext = "library";
     openActionModal(null);
   });
