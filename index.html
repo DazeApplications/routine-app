@@ -70,9 +70,9 @@
   .hidden { display: none !important; }
 
   .section-label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
-    color: var(--ink-soft); margin: 18px 0 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px; font-weight: 700;
+    color: var(--ink); margin: 20px 2px 8px;
   }
   .choice-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
   .choice-card {
@@ -263,6 +263,25 @@
   }
   .modal h2 { font-size: 19px; margin-bottom: 16px; }
   .modal-close-row { display: flex; justify-content: flex-end; margin-bottom: -6px; }
+
+  .modal-section {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px 14px 2px; margin-bottom: 16px;
+  }
+  .modal-section > *:last-child { margin-bottom: 14px; }
+  .modal-section:last-of-type { margin-bottom: 0; }
+
+  .section-toggle {
+    width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; background: none; border: none; padding: 4px 2px; margin: 20px 0 0;
+    cursor: pointer; font: inherit; text-align: left; -webkit-tap-highlight-color: transparent;
+  }
+  .section-toggle .section-label { margin: 0; }
+  .section-toggle .section-toggle-chevron {
+    font-size: 20px; line-height: 1; color: var(--ink-soft); transition: transform 0.15s; flex-shrink: 0;
+  }
+  .section-toggle[aria-expanded="true"] .section-toggle-chevron { transform: rotate(180deg); }
+  .section-toggle + .modal-section { margin-top: 8px; }
 
   .field { margin-bottom: 14px; }
   .field label {
@@ -535,6 +554,8 @@
   <div class="modal">
     <div class="modal-close-row"><button class="icon-btn" data-close="routineModal">✕</button></div>
     <h2 id="routineModalTitle">New routine</h2>
+    <div class="section-label">Details</div>
+    <div class="modal-section">
     <div class="field">
       <label>Name</label>
       <div class="name-icon-row">
@@ -550,9 +571,8 @@
         </div>
       </div>
     </div>
-    <div class="section-label" style="margin-top:20px;">Trigger</div>
     <div class="field">
-      <label style="text-transform:none;font-size:11px;">Type</label>
+      <label style="text-transform:none;font-size:11px;">Trigger</label>
       <select id="triggerType">
         <option value="off">None</option>
         <option value="weekly">Day of week</option>
@@ -642,18 +662,19 @@
       <p style="font-size:12px;color:var(--ink-soft);margin:0 0 6px;" id="weatherLocationStatus"></p>
       <button type="button" class="btn-secondary" id="weatherLocationBtn" style="margin-top:0;">Use my location</button>
     </div>
-
-    <div class="section-label" style="margin-top:20px;">History</div>
     <div class="field">
       <label style="display:flex;align-items:center;justify-content:space-between;text-transform:none;font-size:14px;color:var(--ink);">
         Save a record each time this routine is run
         <input type="checkbox" id="routineSaveHistory" style="width:auto;">
       </label>
     </div>
+    </div>
 
-    <div class="section-label" style="margin-top:20px;">Steps</div>
+    <div class="section-label">Steps</div>
+    <div class="modal-section">
     <div class="step-list" id="routineStepList"></div>
     <button class="btn-secondary" id="addStepBtn">+ Add a step</button>
+    </div>
 
     <button class="btn-primary" id="saveRoutineBtn">Save routine</button>
     <button class="btn-secondary btn-danger hidden" id="deleteRoutineBtn">Delete routine</button>
@@ -721,6 +742,8 @@
   <div class="modal">
     <div class="modal-close-row"><button class="icon-btn" data-close="actionModal">✕</button></div>
     <h2 id="actionModalTitle">New action</h2>
+    <div class="section-label">Details</div>
+    <div class="modal-section">
     <div class="field">
       <label>Name</label>
       <div class="name-icon-row">
@@ -737,7 +760,7 @@
       </div>
     </div>
     <div class="field">
-      <label>Type</label>
+      <label>Completion Option</label>
       <div class="type-toggle">
         <button type="button" data-kind="check" id="kindCheckBtn">✓ Mark done</button>
         <button type="button" data-kind="timer" id="kindTimerBtn">⏱ Timer</button>
@@ -756,7 +779,13 @@
         </div>
       </div>
     </div>
-    <div class="section-label" style="margin-top:20px;">Linked product (optional)</div>
+    </div>
+
+    <button type="button" class="section-toggle" id="productSectionToggle" aria-expanded="false" aria-controls="productSection">
+      <span class="section-label">Linked product (optional)</span>
+      <span class="section-toggle-chevron">▾</span>
+    </button>
+    <div class="modal-section hidden" id="productSection">
     <div class="field">
       <label style="text-transform:none;font-size:11px;">Product page link</label>
       <input type="url" id="productUrl" placeholder="https://...">
@@ -772,6 +801,7 @@
     <div class="field">
       <label style="text-transform:none;font-size:11px;">Directions of use</label>
       <textarea id="productDirections" placeholder="e.g. Apply a dime-sized amount to damp skin, massage for 30 seconds, rinse."></textarea>
+    </div>
     </div>
     <button class="btn-primary" id="saveActionBtn">Save action</button>
     <button class="btn-secondary btn-danger hidden" id="deleteActionBtn">Delete action</button>
@@ -846,6 +876,7 @@
   "use strict";
 
   var STORE_KEY = "routineapp.v1";
+  var LAST_VIEW_KEY = STORE_KEY + ".lastView";
   // Grouped for the category headers in the icon picker; each item carries
   // search keywords so typing "sleep" etc. can find it under any group.
   var EMOJI_GROUPS = [
@@ -1399,6 +1430,7 @@
 
   function setView(v) {
     currentView = v;
+    try { localStorage.setItem(LAST_VIEW_KEY, v); } catch (e) {}
     document.getElementById("view-home").classList.toggle("hidden", v !== "home");
     document.getElementById("view-routines").classList.toggle("hidden", v !== "routines");
     document.getElementById("view-groups").classList.toggle("hidden", v !== "groups");
@@ -1929,6 +1961,7 @@
     document.getElementById("productBrand").value = product ? (product.brand || "") : "";
     document.getElementById("productDirections").value = product ? (product.directions || "") : "";
     document.getElementById("deleteActionBtn").classList.toggle("hidden", !a);
+    setProductSectionExpanded(!!product);
     openModal("actionModal");
   }
 
@@ -1940,6 +1973,14 @@
   }
   document.getElementById("kindCheckBtn").addEventListener("click", function () { setKind("check"); });
   document.getElementById("kindTimerBtn").addEventListener("click", function () { setKind("timer"); });
+
+  function setProductSectionExpanded(expanded) {
+    document.getElementById("productSectionToggle").setAttribute("aria-expanded", expanded ? "true" : "false");
+    document.getElementById("productSection").classList.toggle("hidden", !expanded);
+  }
+  document.getElementById("productSectionToggle").addEventListener("click", function () {
+    setProductSectionExpanded(this.getAttribute("aria-expanded") !== "true");
+  });
 
   document.getElementById("saveActionBtn").addEventListener("click", function () {
     var name = document.getElementById("actionName").value.trim();
@@ -2738,7 +2779,9 @@
 
   // ---------- Init ----------
   initSync();
-  setView("home");
+  var savedView = null;
+  try { savedView = localStorage.getItem(LAST_VIEW_KEY); } catch (e) {}
+  setView(VIEW_TITLES[savedView] ? savedView : "home");
 
   setInterval(function () {
     if (currentView === "home") renderDashboard();
