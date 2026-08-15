@@ -872,6 +872,17 @@
     cloudPushTimer = setTimeout(pushToCloud, 800);
   }
 
+  // Flush any debounced push immediately when the app is backgrounded/closed,
+  // so a quick edit-then-close (e.g. saving a group right before switching
+  // apps) doesn't get lost before the 800ms debounce fires.
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden" && cloudPushTimer) {
+      clearTimeout(cloudPushTimer);
+      cloudPushTimer = null;
+      pushToCloud();
+    }
+  });
+
   function pushToCloud() {
     if (!auth || !auth.currentUser) return;
     var ts = Date.now();
@@ -912,11 +923,11 @@
     var ref = db.collection("users").doc(userUid);
     ref.get().then(function (snap) {
       var localMeta = getLocalMeta();
-      var localHasData = state.actions.length || state.routines.length;
+      var localHasData = state.actions.length || state.routines.length || state.groups.length;
       if (snap.exists) {
         var cloud = snap.data();
         var cloudUpdatedAt = cloud.updatedAt || 0;
-        var cloudHasData = (cloud.actions && cloud.actions.length) || (cloud.routines && cloud.routines.length);
+        var cloudHasData = (cloud.actions && cloud.actions.length) || (cloud.routines && cloud.routines.length) || (cloud.groups && cloud.groups.length);
         if (cloudUpdatedAt === localMeta.updatedAt) {
           // already in sync
         } else if (!localHasData) {
