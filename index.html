@@ -144,6 +144,8 @@
   .action-row .info h4 { margin: 0; font-size: 14.5px; font-weight: 600; }
   .action-row .info .meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
   .product-tag { font-family: 'Inter', sans-serif; color: var(--teal-deep); }
+  a.product-tag { text-decoration: none; cursor: pointer; }
+  a.product-tag:hover { text-decoration: underline; }
   .action-row .actions { display: flex; gap: 6px; }
 
   /* FAB */
@@ -158,23 +160,38 @@
   }
   .fab:hover { background: var(--violet-deep); }
 
-  /* Bottom nav */
-  .bottom-nav {
-    position: fixed; left: 0; right: 0; bottom: 0;
+  /* Tab nav: top bar on phones, left sidebar on laptop/desktop */
+  .tab-nav {
+    position: sticky; top: 0; left: 0; right: 0;
     display: flex; background: var(--card);
-    border-top: 1px solid var(--line);
-    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    border-bottom: 1px solid var(--line);
+    padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
     z-index: 15;
   }
-  .bottom-nav button {
+  .tab-nav button {
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
     border: none; background: none; padding: 8px 4px; cursor: pointer;
     color: var(--ink-soft); font-size: 11px; font-family: 'IBM Plex Mono', monospace;
     letter-spacing: 0.03em; text-transform: uppercase; border-radius: 10px;
   }
-  .bottom-nav button .nav-icon { font-size: 19px; }
-  .bottom-nav button.active { color: var(--violet-deep); }
-  .bottom-nav button.active .nav-icon { transform: scale(1.08); }
+  .tab-nav button .nav-icon { font-size: 19px; }
+  .tab-nav button.active { color: var(--violet-deep); background: var(--paper-deep); }
+  .tab-nav button.active .nav-icon { transform: scale(1.08); }
+
+  @media (min-width: 900px) {
+    #app { padding-left: 220px; }
+    .tab-nav {
+      position: fixed; top: 0; left: 0; bottom: 0; right: auto;
+      width: 220px; flex-direction: column; align-items: stretch;
+      border-bottom: none; border-right: 1px solid var(--line);
+      padding: 24px 12px; gap: 4px; overflow-y: auto;
+    }
+    .tab-nav button {
+      flex: none; flex-direction: row; justify-content: flex-start; gap: 12px;
+      padding: 11px 14px; font-size: 12.5px;
+    }
+    .tab-nav button .nav-icon { font-size: 18px; }
+  }
 
   /* Modal */
   .modal-backdrop {
@@ -396,6 +413,12 @@
 </head>
 <body>
 <div id="app">
+  <nav class="tab-nav">
+    <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-btn" data-view="groups"><span class="nav-icon">📦</span>Groups</button>
+    <button class="nav-btn" data-view="actions"><span class="nav-icon">🧩</span>Actions</button>
+  </nav>
+
   <header class="app-header">
     <h1><span class="header-icon" id="headerIcon">🏠</span><span id="headerTitle">Routines</span></h1>
     <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
@@ -417,12 +440,6 @@
   </main>
 
   <button class="fab" id="fabBtn" title="Add">+</button>
-
-  <nav class="bottom-nav">
-    <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
-    <button class="nav-btn" data-view="groups"><span class="nav-icon">📦</span>Groups</button>
-    <button class="nav-btn" data-view="actions"><span class="nav-icon">🧩</span>Actions</button>
-  </nav>
 </div>
 
 <!-- Routine editor modal -->
@@ -1417,7 +1434,9 @@
           '<div class="emoji">' + iconHtml(a.icon) + '</div>' +
           '<div class="info"><h4>' + escapeHtml(a.name) + '</h4>' +
             '<div class="meta">' + (a.kind === "timer" ? "⏱ " + fmtDuration(a.duration) + " timer" : "✓ Mark done") +
-              (a.product ? ' · <span class="product-tag">🔗 ' + escapeHtml(productLabel(a.product)) + '</span>' : '') + '</div></div>' +
+              (a.product ? ' · ' + (a.product.url ?
+                '<a class="product-tag" href="' + escapeHtml(a.product.url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + escapeHtml(productLabel(a.product)) + '</a>' :
+                '<span class="product-tag">🔗 ' + escapeHtml(productLabel(a.product)) + '</span>') : '') + '</div></div>' +
           '<div class="actions"><button class="ghost-btn" data-edit-action="' + a.id + '">✎</button></div>' +
         '</div>';
     });
