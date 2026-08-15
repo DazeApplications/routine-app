@@ -1376,12 +1376,12 @@
   }
 
   // ---------- Navigation ----------
-  var VIEW_TITLES = { home: { icon: "🏠", label: "Home" }, groups: { icon: "📦", label: "Groups" }, actions: { icon: "🧩", label: "Actions" }, history: { icon: "📜", label: "History" } };
+  var VIEW_TITLES = { home: { icon: "🏠", label: "Home" }, routines: { icon: "🗓️", label: "Routines" }, groups: { icon: "📦", label: "Groups" }, history: { icon: "📜", label: "History" } };
 
   function setView(v) {
     currentView = v;
     document.getElementById("view-home").classList.toggle("hidden", v !== "home");
-    document.getElementById("view-actions").classList.toggle("hidden", v !== "actions");
+    document.getElementById("view-routines").classList.toggle("hidden", v !== "routines");
     document.getElementById("view-groups").classList.toggle("hidden", v !== "groups");
     document.getElementById("view-history").classList.toggle("hidden", v !== "history");
     var navBtns = document.querySelectorAll(".nav-btn");
@@ -1391,15 +1391,15 @@
     var title = VIEW_TITLES[v] || VIEW_TITLES.home;
     document.getElementById("headerIcon").textContent = title.icon;
     document.getElementById("headerTitle").textContent = title.label;
-    document.getElementById("fabBtn").classList.toggle("hidden", v === "history");
+    document.getElementById("fabBtn").classList.toggle("hidden", v === "home" || v === "history");
     renderCurrentView();
   }
 
   function renderCurrentView() {
-    if (currentView === "home") renderHome();
+    if (currentView === "home") renderDashboard();
+    else if (currentView === "routines") renderRoutinesTab();
     else if (currentView === "groups") renderGroups();
     else if (currentView === "history") renderHistory();
-    else renderActions();
   }
 
   // ---------- Home dashboard ----------
@@ -1416,9 +1416,8 @@
   }
 
   function recentlyUsedRoutines(limit) {
-    var withLast = state.routines.filter(function (r) { return r.history && r.history.length; }).map(function (r) {
-      var last = r.history.reduce(function (max, h) { return h.finishedAt > max ? h.finishedAt : max; }, 0);
-      return { routine: r, last: last };
+    var withLast = state.routines.filter(function (r) { return r.lastCompletedAt; }).map(function (r) {
+      return { routine: r, last: r.lastCompletedAt };
     });
     withLast.sort(function (a, b) { return b.last - a.last; });
     return withLast.slice(0, limit || 8);
@@ -2254,7 +2253,7 @@
     }
     save();
     closeModal("routineModal");
-    renderHome();
+    renderRoutinesList();
   });
 
   document.getElementById("deleteRoutineBtn").addEventListener("click", function () {
@@ -2264,7 +2263,7 @@
     state.groups.forEach(function (g) { g.routineIds = g.routineIds.filter(function (id) { return id !== editingRoutineDraft.id; }); });
     save();
     closeModal("routineModal");
-    renderHome();
+    renderRoutinesList();
   });
 
   // ---------- Group modal ----------
@@ -2414,9 +2413,12 @@
     btn.addEventListener("click", function () { setView(btn.getAttribute("data-view")); });
   });
   document.getElementById("fabBtn").addEventListener("click", function () {
-    if (currentView === "home") openRoutineModal(null);
+    if (currentView === "routines") openRoutineModal(null);
     else if (currentView === "groups") openGroupModal(null);
-    else if (currentView === "actions") { actionModalContext = "library"; openActionModal(null); }
+  });
+  document.getElementById("addActionInlineBtn").addEventListener("click", function () {
+    actionModalContext = "library";
+    openActionModal(null);
   });
 
   // ---------- History filters ----------
@@ -2714,7 +2716,10 @@
   initSync();
   setView("home");
 
-  setInterval(function () { if (currentView === "home") renderHome(); }, 60000);
+  setInterval(function () {
+    if (currentView === "home") renderDashboard();
+    else if (currentView === "routines") renderRoutinesList();
+  }, 60000);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
