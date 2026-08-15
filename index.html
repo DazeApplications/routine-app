@@ -74,6 +74,12 @@
     font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
     color: var(--ink-soft); margin: 18px 0 10px;
   }
+  .section-label-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .section-label-row .ghost-btn {
+    width: 26px; height: 26px; font-size: 13px;
+  }
 
   .empty-state {
     text-align: center; padding: 48px 20px; color: var(--ink-soft);
@@ -147,6 +153,49 @@
   a.product-tag { text-decoration: none; cursor: pointer; }
   a.product-tag:hover { text-decoration: underline; }
   .action-row .actions { display: flex; gap: 6px; }
+
+  /* History */
+  .history-filters { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 16px; }
+  .history-filters input[type=text] {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 15px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .history-filters select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    font-size: 13.5px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .history-filters input[type=text]:focus, .history-filters select:focus,
+  .history-filters input[type=date]:focus, .history-filters input[type=time]:focus { outline: none; border-color: var(--violet); }
+  .history-filter-row { display: flex; gap: 8px; }
+  .history-filter-row .field-inline { flex: 1; min-width: 0; }
+  .history-filter-row .field-inline label {
+    display: block; font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px;
+  }
+  .history-filter-row .field-inline input[type=date], .history-filter-row .field-inline input[type=time] {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .history-clear-btn { width: auto; align-self: flex-start; padding: 7px 12px; font-size: 12px; gap: 6px; }
+  .history-entry { display: flex; flex-direction: column; }
+  .history-card { cursor: pointer; }
+  .history-card.expanded { border-radius: 16px 16px 0 0; border-bottom: none; }
+  .history-chevron { font-size: 13px; color: var(--ink-soft); flex-shrink: 0; transition: transform 0.15s; }
+  .history-card.expanded .history-chevron { transform: rotate(180deg); }
+  .history-detail {
+    background: var(--card); border: 1px solid var(--line); border-top: none;
+    border-radius: 0 0 16px 16px; padding: 2px 14px 10px;
+  }
+  .history-detail.hidden { display: none; }
+  .history-step-row {
+    display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line);
+  }
+  .history-step-row:first-child { border-top: none; }
+  .history-step-row .emoji { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+  .history-step-row .info { flex: 1; min-width: 0; }
+  .history-step-row .name { font-size: 13px; font-weight: 500; }
+  .history-step-row .meta { font-size: 11.5px; margin-top: 2px; }
+  .history-step-row .dur { font-size: 12px; font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); flex-shrink: 0; }
 
   /* FAB */
   .fab {
@@ -415,8 +464,9 @@
 <div id="app">
   <nav class="tab-nav">
     <button class="nav-btn active" data-view="home"><span class="nav-icon">🏠</span>Home</button>
+    <button class="nav-btn" data-view="routines"><span class="nav-icon">🗓️</span>Routines</button>
     <button class="nav-btn" data-view="groups"><span class="nav-icon">📦</span>Groups</button>
-    <button class="nav-btn" data-view="actions"><span class="nav-icon">🧩</span>Actions</button>
+    <button class="nav-btn" data-view="history"><span class="nav-icon">📜</span>History</button>
   </nav>
 
   <header class="app-header">
@@ -426,16 +476,35 @@
 
   <main>
     <section id="view-home" class="view">
-      <div id="homeContent"></div>
+      <div id="dashboardContent"></div>
     </section>
 
-    <section id="view-actions" class="view hidden">
-      <div class="section-label">Your custom actions</div>
+    <section id="view-routines" class="view hidden">
+      <div class="section-label">Routines</div>
+      <div id="routinesListContent"></div>
+      <div class="section-label section-label-row">Actions<button class="ghost-btn" id="addActionInlineBtn" title="Add action">+</button></div>
       <div id="actionsContent"></div>
     </section>
 
     <section id="view-groups" class="view hidden">
       <div id="groupsContent"></div>
+    </section>
+
+    <section id="view-history" class="view hidden">
+      <div class="history-filters">
+        <input type="text" id="historySearch" placeholder="Search history (routine, step, product)" autocomplete="off">
+        <select id="historyRoutineFilter"><option value="">All routines</option></select>
+        <div class="history-filter-row">
+          <div class="field-inline"><label>From date</label><input type="date" id="historyDateFrom"></div>
+          <div class="field-inline"><label>To date</label><input type="date" id="historyDateTo"></div>
+        </div>
+        <div class="history-filter-row">
+          <div class="field-inline"><label>From time</label><input type="time" id="historyTimeFrom"></div>
+          <div class="field-inline"><label>To time</label><input type="time" id="historyTimeTo"></div>
+        </div>
+        <button class="ghost-btn history-clear-btn" id="historyClearFilters">✕ Clear filters</button>
+      </div>
+      <div id="historyContent"></div>
     </section>
   </main>
 
@@ -848,6 +917,7 @@
 
   var state = load();
   var currentView = "home";
+  var historyFilters = { search: "", routineId: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "" };
   var editingRoutineDraft = null;
   var editingGroupDraft = null;
   var editingActionId = null;
@@ -1137,6 +1207,18 @@
     return h12 + ":" + m + " " + ampm;
   }
 
+  function fmtHistoryDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  }
+
+  function fmtHistoryTime(ts) {
+    var d = new Date(ts);
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    return h12 + ":" + (m < 10 ? "0" + m : m) + " " + ampm;
+  }
+
   function fmtScheduleDays(days) {
     if (days.length === 7) return "Every day";
     return days.slice().sort().map(function (d) { return DAY_NAMES[d]; }).join(" ");
@@ -1206,7 +1288,7 @@
     fetch(url).then(function (res) { return res.json(); }).then(function (data) {
       var temp = data && data.current && typeof data.current.temperature_2m === "number" ? data.current.temperature_2m : null;
       weatherCache[key] = { tempC: temp, fetchedAt: Date.now(), fetching: false };
-      if (currentView === "home") renderHome();
+      if (currentView === "routines") renderRoutinesList();
     }).catch(function () {
       weatherCache[key] = { tempC: entry ? entry.tempC : null, fetchedAt: Date.now(), fetching: false };
     });
@@ -1294,13 +1376,14 @@
   }
 
   // ---------- Navigation ----------
-  var VIEW_TITLES = { home: { icon: "🏠", label: "Home" }, groups: { icon: "📦", label: "Groups" }, actions: { icon: "🧩", label: "Actions" } };
+  var VIEW_TITLES = { home: { icon: "🏠", label: "Home" }, groups: { icon: "📦", label: "Groups" }, actions: { icon: "🧩", label: "Actions" }, history: { icon: "📜", label: "History" } };
 
   function setView(v) {
     currentView = v;
     document.getElementById("view-home").classList.toggle("hidden", v !== "home");
     document.getElementById("view-actions").classList.toggle("hidden", v !== "actions");
     document.getElementById("view-groups").classList.toggle("hidden", v !== "groups");
+    document.getElementById("view-history").classList.toggle("hidden", v !== "history");
     var navBtns = document.querySelectorAll(".nav-btn");
     for (var i = 0; i < navBtns.length; i++) {
       navBtns[i].classList.toggle("active", navBtns[i].getAttribute("data-view") === v);
@@ -1308,19 +1391,79 @@
     var title = VIEW_TITLES[v] || VIEW_TITLES.home;
     document.getElementById("headerIcon").textContent = title.icon;
     document.getElementById("headerTitle").textContent = title.label;
+    document.getElementById("fabBtn").classList.toggle("hidden", v === "history");
     renderCurrentView();
   }
 
   function renderCurrentView() {
     if (currentView === "home") renderHome();
     else if (currentView === "groups") renderGroups();
+    else if (currentView === "history") renderHistory();
     else renderActions();
   }
 
-  // ---------- Home / routines list ----------
-  function renderHome() {
+  // ---------- Home dashboard ----------
+  function fmtRelativeTime(ts) {
+    var diffMs = Date.now() - ts;
+    var min = Math.floor(diffMs / 60000);
+    if (min < 1) return "Just now";
+    if (min < 60) return min + (min === 1 ? " min ago" : " mins ago");
+    var hr = Math.floor(min / 60);
+    if (hr < 24) return hr + (hr === 1 ? " hour ago" : " hours ago");
+    var day = Math.floor(hr / 24);
+    if (day < 7) return day + (day === 1 ? " day ago" : " days ago");
+    return fmtHistoryDate(ts);
+  }
+
+  function recentlyUsedRoutines(limit) {
+    var withLast = state.routines.filter(function (r) { return r.history && r.history.length; }).map(function (r) {
+      var last = r.history.reduce(function (max, h) { return h.finishedAt > max ? h.finishedAt : max; }, 0);
+      return { routine: r, last: last };
+    });
+    withLast.sort(function (a, b) { return b.last - a.last; });
+    return withLast.slice(0, limit || 8);
+  }
+
+  function renderDashboard() {
+    var el = document.getElementById("dashboardContent");
+    var recent = recentlyUsedRoutines(8);
+    if (!recent.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">🏠</div>' +
+        '<h3>No routines run yet</h3>' +
+        '<p>Once you run a routine, it\'ll show up here for quick access.</p>' +
+        '</div>';
+      return;
+    }
+    var html = '<div class="card-list">';
+    recent.forEach(function (item) {
+      var r = item.routine;
+      html +=
+        '<div class="routine-card">' +
+          '<div class="emoji">' + iconHtml(r.icon) + '</div>' +
+          '<div class="info"><h3>' + escapeHtml(r.name) + '</h3><div class="meta">Last run ' + fmtRelativeTime(item.last) + '</div></div>' +
+          '<div class="actions">' +
+            '<button class="play-btn" data-play-routine="' + r.id + '">▶</button>' +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-play-routine]").forEach(function (btn) {
+      btn.addEventListener("click", function () { startRun(btn.getAttribute("data-play-routine")); });
+    });
+  }
+
+  // ---------- Routines list ----------
+  function renderRoutinesTab() {
     ensureWeatherData();
-    var el = document.getElementById("homeContent");
+    renderRoutinesList();
+    renderActions();
+  }
+
+  function renderRoutinesList() {
+    var el = document.getElementById("routinesListContent");
     if (!state.routines.length) {
       el.innerHTML =
         '<div class="empty-state"><div class="big">🗓️</div>' +
@@ -1452,6 +1595,132 @@
 
   function productLabel(product) {
     return [product.brand, product.name].filter(Boolean).join(" ") || "Linked product";
+  }
+
+  // ---------- History ----------
+  function allHistoryEntries() {
+    var out = [];
+    state.routines.forEach(function (r) {
+      (r.history || []).forEach(function (h) {
+        out.push({ entry: h, routine: r });
+      });
+    });
+    out.sort(function (a, b) { return b.entry.finishedAt - a.entry.finishedAt; });
+    return out;
+  }
+
+  function historySearchHaystack(item) {
+    var hay = item.routine.name.toLowerCase();
+    item.entry.steps.forEach(function (s) {
+      hay += " " + (s.name || "").toLowerCase();
+      if (s.product) hay += " " + [s.product.brand, s.product.name].filter(Boolean).join(" ").toLowerCase();
+    });
+    return hay;
+  }
+
+  function matchesHistoryFilters(item) {
+    var f = historyFilters;
+    if (f.routineId && item.routine.id !== f.routineId) return false;
+    var startedAt = item.entry.startedAt;
+    if (f.dateFrom) {
+      var df = new Date(f.dateFrom + "T00:00:00");
+      if (startedAt < df.getTime()) return false;
+    }
+    if (f.dateTo) {
+      var dt = new Date(f.dateTo + "T23:59:59");
+      if (startedAt > dt.getTime()) return false;
+    }
+    if (f.timeFrom || f.timeTo) {
+      var d = new Date(startedAt);
+      var mins = d.getHours() * 60 + d.getMinutes();
+      if (f.timeFrom && mins < timeToMinutes(f.timeFrom)) return false;
+      if (f.timeTo && mins > timeToMinutes(f.timeTo)) return false;
+    }
+    if (f.search && historySearchHaystack(item).indexOf(f.search.toLowerCase()) === -1) return false;
+    return true;
+  }
+
+  function populateHistoryRoutineFilter() {
+    var sel = document.getElementById("historyRoutineFilter");
+    var withHistory = state.routines.filter(function (r) { return r.history && r.history.length; });
+    var ids = withHistory.map(function (r) { return r.id; }).join(",");
+    if (sel.getAttribute("data-ids") === ids) return;
+    sel.setAttribute("data-ids", ids);
+    var current = historyFilters.routineId;
+    var html = '<option value="">All routines</option>';
+    withHistory.forEach(function (r) {
+      html += '<option value="' + r.id + '"' + (r.id === current ? " selected" : "") + '>' + escapeHtml(r.name) + "</option>";
+    });
+    sel.innerHTML = html;
+  }
+
+  function renderHistoryStepsHtml(entry) {
+    var html = "";
+    entry.steps.forEach(function (s) {
+      html +=
+        '<div class="history-step-row">' +
+          '<div class="emoji">' + iconHtml(s.icon) + '</div>' +
+          '<div class="info"><div class="name">' + escapeHtml(s.name) + '</div>' +
+            (s.product ? '<div class="meta">' + (s.product.url ?
+              '<a class="product-tag" href="' + escapeHtml(s.product.url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + escapeHtml(productLabel(s.product)) + '</a>' :
+              '<span class="product-tag">🔗 ' + escapeHtml(productLabel(s.product)) + '</span>') + '</div>' : '') +
+          '</div>' +
+          '<div class="dur">' + (s.kind === "timer" ? fmtDuration(s.actualDuration) + (s.plannedDuration ? " / " + fmtDuration(s.plannedDuration) : "") : "✓ " + fmtDuration(s.actualDuration)) + '</div>' +
+        '</div>';
+    });
+    return html;
+  }
+
+  function renderHistory() {
+    populateHistoryRoutineFilter();
+    var el = document.getElementById("historyContent");
+    var all = allHistoryEntries();
+    if (!all.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">📜</div>' +
+        '<h3>No history yet</h3>' +
+        '<p>Turn on "Save history" when editing a routine, then complete a run to see it appear here.</p>' +
+        '</div>';
+      return;
+    }
+    var filtered = all.filter(matchesHistoryFilters);
+    if (!filtered.length) {
+      el.innerHTML =
+        '<div class="empty-state"><div class="big">🔍</div>' +
+        '<h3>No matching history</h3>' +
+        '<p>Try adjusting or clearing your filters.</p>' +
+        '</div>';
+      return;
+    }
+    var html = '<div class="card-list">';
+    filtered.forEach(function (item) {
+      var r = item.routine, h = item.entry;
+      var totalSec = Math.max(0, Math.round((h.finishedAt - h.startedAt) / 1000));
+      var meta = fmtHistoryDate(h.startedAt) + " · " + fmtHistoryTime(h.startedAt) + " · " +
+        h.steps.length + (h.steps.length === 1 ? " step" : " steps") + " · " + fmtDuration(totalSec);
+      html +=
+        '<div class="history-entry">' +
+          '<div class="routine-card history-card" data-history-id="' + h.id + '">' +
+            '<div class="emoji">' + iconHtml(r.icon) + '</div>' +
+            '<div class="info"><h3>' + escapeHtml(r.name) + '</h3><div class="meta">' + meta + '</div></div>' +
+            '<div class="history-chevron">▾</div>' +
+          '</div>' +
+          '<div class="history-detail hidden" id="historyDetail-' + h.id + '"></div>' +
+        '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+
+    el.querySelectorAll("[data-history-id]").forEach(function (card) {
+      card.addEventListener("click", function () {
+        var id = card.getAttribute("data-history-id");
+        var item = filtered.filter(function (it) { return it.entry.id === id; })[0];
+        var detail = document.getElementById("historyDetail-" + id);
+        if (!detail.innerHTML) detail.innerHTML = renderHistoryStepsHtml(item.entry);
+        var nowHidden = detail.classList.toggle("hidden");
+        card.classList.toggle("expanded", !nowHidden);
+      });
+    });
   }
 
   function escapeHtml(s) {
@@ -2147,7 +2416,43 @@
   document.getElementById("fabBtn").addEventListener("click", function () {
     if (currentView === "home") openRoutineModal(null);
     else if (currentView === "groups") openGroupModal(null);
-    else { actionModalContext = "library"; openActionModal(null); }
+    else if (currentView === "actions") { actionModalContext = "library"; openActionModal(null); }
+  });
+
+  // ---------- History filters ----------
+  document.getElementById("historySearch").addEventListener("input", function (e) {
+    historyFilters.search = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyRoutineFilter").addEventListener("change", function (e) {
+    historyFilters.routineId = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyDateFrom").addEventListener("change", function (e) {
+    historyFilters.dateFrom = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyDateTo").addEventListener("change", function (e) {
+    historyFilters.dateTo = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyTimeFrom").addEventListener("change", function (e) {
+    historyFilters.timeFrom = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyTimeTo").addEventListener("change", function (e) {
+    historyFilters.timeTo = e.target.value;
+    renderHistory();
+  });
+  document.getElementById("historyClearFilters").addEventListener("click", function () {
+    historyFilters = { search: "", routineId: "", dateFrom: "", dateTo: "", timeFrom: "", timeTo: "" };
+    document.getElementById("historySearch").value = "";
+    document.getElementById("historyRoutineFilter").value = "";
+    document.getElementById("historyDateFrom").value = "";
+    document.getElementById("historyDateTo").value = "";
+    document.getElementById("historyTimeFrom").value = "";
+    document.getElementById("historyTimeTo").value = "";
+    renderHistory();
   });
 
   // ---------- Run mode ----------
